@@ -202,6 +202,7 @@
       flex-direction: column;
       height: 100%;
       width: 100%;
+      min-width: 0;
       position: relative;
       overflow: hidden;
     }
@@ -247,36 +248,47 @@
     #messages-container {
       flex: 1;
       overflow-y: auto;
-      padding: 16px;
+      padding: 12px 10px;
       display: flex;
       flex-direction: column;
       gap: 16px;
       width: 100%;
+      min-width: 0;
       -webkit-overflow-scrolling: touch;
     }
 
     .message-row {
       display: flex;
-      gap: 10px;
+      gap: 8px;
       width: 100%;
+      min-width: 0;
       margin: 0;
     }
 
-    .message-row.user { justify-content: flex-end; }
+    .message-row.user { 
+      justify-content: flex-end; 
+    }
+
+    .message-row.user .avatar {
+      order: 2;
+    }
+
     .message-bubble {
-      max-width: 90%;
-      padding: 12px 14px;
+      max-width: 88%;
+      padding: 10px 12px;
       border-radius: var(--radius-md);
       background-color: var(--bg-secondary);
       position: relative;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
       word-break: break-word;
       overflow-wrap: anywhere;
+      min-width: 0;
     }
 
     .message-row.user .message-bubble {
       background-color: var(--bg-tertiary);
       border-bottom-right-radius: 2px;
+      margin-left: 0;
     }
 
     .message-row.assistant .message-bubble {
@@ -284,11 +296,13 @@
       width: 100%;
       max-width: 100%;
       padding: 0;
+      box-shadow: none;
+      min-width: 0;
     }
 
     .avatar {
-      width: 32px;
-      height: 32px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       background-color: var(--accent-color);
       display: flex;
@@ -296,8 +310,9 @@
       justify-content: center;
       font-weight: bold;
       color: white;
-      font-size: 13px;
+      font-size: 12px;
       flex-shrink: 0;
+      margin-top: 2px;
     }
 
     .msg-meta {
@@ -325,7 +340,7 @@
     /* Input Area */
     .input-container {
       width: 100%;
-      padding: 0 12px 12px 12px;
+      padding: 0 10px 10px 10px;
       flex-shrink: 0;
     }
 
@@ -488,6 +503,12 @@
     .form-control:focus { border-color: var(--accent-color); }
 
     /* Markdown Basics & Formatting */
+    .md-content {
+      width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
     .md-content p { margin-bottom: 8px; }
     .md-content p:last-child { margin-bottom: 0; }
     .md-content h1, .md-content h2, .md-content h3, .md-content h4, .md-content h5, .md-content h6 {
@@ -503,6 +524,7 @@
       position: relative;
       border: 1px solid var(--border-color);
       -webkit-overflow-scrolling: touch;
+      max-width: 100%;
     }
     .md-content code {
       font-family: monospace;
@@ -510,8 +532,13 @@
       background: rgba(255,255,255,0.1);
       padding: 2px 4px;
       border-radius: 4px;
+      word-break: break-word;
     }
-    .md-content pre code { background: transparent; padding: 0; }
+    .md-content pre code { 
+      background: transparent; 
+      padding: 0; 
+      word-break: normal;
+    }
     .code-block-header {
       display: flex;
       justify-content: space-between;
@@ -532,17 +559,28 @@
       padding: 2px 6px;
     }
     .btn-copy-code:hover { color: var(--text-primary); }
+
+    /* Fixed Responsive Table Container & Styling */
+    .table-wrapper {
+      width: 100%;
+      overflow-x: auto;
+      margin: 8px 0;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-color);
+      -webkit-overflow-scrolling: touch;
+    }
     .md-content table {
       border-collapse: collapse;
       width: 100%;
-      margin: 8px 0;
-      display: block;
-      overflow-x: auto;
+      min-width: 500px; /* அட்டவணைச் செல்கள் குறுகாமல் இருக்க சுலபமான scroll வசதி */
+      margin: 0;
     }
     .md-content th, .md-content td {
       border: 1px solid var(--border-color);
-      padding: 6px 10px;
+      padding: 8px 12px;
       text-align: left;
+      font-size: 0.9em;
+      vertical-align: top;
     }
     .md-content th { background-color: var(--bg-tertiary); }
     .md-content blockquote {
@@ -614,7 +652,10 @@
         display: flex;
       }
       .message-bubble {
-        max-width: 95%;
+        max-width: 88%;
+      }
+      .message-row.assistant .message-bubble {
+        max-width: 100%;
       }
       .top-header {
         padding: 4px 8px;
@@ -976,7 +1017,9 @@
       return {
         render: (text) => {
           if(!text) return '';
-          let raw = UtilityModule.escapeHTML(text);
+          
+          // Unescape <br> tags if returned explicitly by AI
+          let raw = UtilityModule.escapeHTML(text).replace(/&lt;br\s*&gt;/gi, '<br>');
 
           // Code blocks with clean markup for event delegation
           raw = raw.replace(/```(\w*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -1025,20 +1068,20 @@
           raw = raw.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
           raw = raw.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
-          // Tables
+          // Tables with Horizontal Wrapper for Mobile
           raw = raw.replace(/^\|(.+)\|$/gm, (match, content) => {
             const cells = content.split('|').map(c => c.trim());
             if (cells.every(c => c.match(/^:?-+:?/))) return '';
             const tag = 'td';
             return '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
           });
-          raw = raw.replace(/(<tr>.*?<\/tr>)/gs, '<table>$1</table>');
-          raw = raw.replace(/<\/table>\s*<table>/g, '');
+          raw = raw.replace(/(<tr>.*?<\/tr>)/gs, '<div class="table-wrapper"><table>$1</table></div>');
+          raw = raw.replace(/<\/div>\s*<div class="table-wrapper">/g, '');
 
           // New lines to br
-          const parts = raw.split(/(<pre>[\s\S]*?<\/pre>)/g);
+          const parts = raw.split(/(<pre>[\s\S]*?<\/pre>|<div class="table-wrapper">[\s\S]*?<\/div>)/g);
           for(let i=0; i<parts.length; i++) {
-            if(!parts[i].startsWith('<pre>')) {
+            if(!parts[i].startsWith('<pre>') && !parts[i].startsWith('<div class="table-wrapper">')) {
               parts[i] = parts[i].replace(/\n/g, '<br>');
             }
           }
@@ -1526,7 +1569,7 @@
 
         document.getElementById('btn-save-settings').addEventListener('click', () => {
           StorageModule.setApiKey(els.settingApiKey.value.trim());
-          StorageModule.setBaseUrl(els.settingBaseUrl.value.trim());
+          StorageModule.setBaseUrl(StorageModule.getBaseUrl().trim());
           StorageModule.setTheme(els.settingTheme.value);
           StorageModule.setAccent(els.settingAccent.value);
           StorageModule.saveParams({
@@ -1544,7 +1587,7 @@
 
         document.getElementById('btn-test-key').addEventListener('click', async () => {
           StorageModule.setApiKey(els.settingApiKey.value.trim());
-          StorageModule.setBaseUrl(els.settingBaseUrl.value.trim());
+          StorageModule.setBaseUrl(StorageModule.getBaseUrl().trim());
           try {
             await initModels();
             alert('Groq API Key வெற்றிகரமாக உறுதிசெய்யப்பட்டது!');
@@ -2166,3 +2209,4 @@
   </script>
 </body>
 </html>
+
