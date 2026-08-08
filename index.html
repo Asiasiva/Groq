@@ -869,6 +869,16 @@
           <label>Base URL (API Endpoint)</label>
           <input type="text" id="setting-base-url" class="form-control" value="https://api.groq.com/openai/v1">
         </div>
+        <hr style="border-color:var(--border-subtle)">
+        <div class="form-group">
+          <label>API Key Manager Dropdown</label>
+          <div style="display:flex; gap:6px;">
+            <select id="preset-key-select" class="form-control" style="flex:1;"></select>
+            <button class="btn-new-chat" id="btn-add-key-preset" style="flex:0 0 auto; padding:0 10px; border-radius:var(--radius-sm);" title="புதிய API Key சேர்">+</button>
+            <button class="btn-new-chat" id="btn-edit-key-preset" style="flex:0 0 auto; padding:0 10px; border-radius:var(--radius-sm);" title="தேர்ந்தெடுக்கப்பட்ட Key பெயர திருத்து">✏️</button>
+            <button class="btn-new-chat" id="btn-del-key-preset" style="flex:0 0 auto; padding:0 10px; color:var(--danger-color); border-radius:var(--radius-sm);" title="தேர்ந்தெடுக்கப்பட்ட Key நீக்கு">✕</button>
+          </div>
+        </div>
         <div class="form-group">
           <label>API Key</label>
           <div style="display:flex; gap:8px;">
@@ -1035,7 +1045,8 @@
         LAST_MODEL: 'groq_last_model',
         PARAMS: 'groq_params',
         PROMPTS: 'groq_prompts',
-        URL_PRESETS: 'groq_url_presets'
+        URL_PRESETS: 'groq_url_presets',
+        KEY_PRESETS: 'groq_key_presets'
       };
 
       const safeParse = (key, fallback) => {
@@ -1069,6 +1080,9 @@
 
         getUrlPresets: () => safeParse(KEYS.URL_PRESETS, DEFAULT_URL_PRESETS),
         saveUrlPresets: (presets) => localStorage.setItem(KEYS.URL_PRESETS, JSON.stringify(presets)),
+
+        getKeyPresets: () => safeParse(KEYS.KEY_PRESETS, []),
+        saveKeyPresets: (presets) => localStorage.setItem(KEYS.KEY_PRESETS, JSON.stringify(presets)),
 
         getTheme: () => localStorage.getItem(KEYS.THEME) || 'dark',
         setTheme: (t) => localStorage.setItem(KEYS.THEME, t),
@@ -1664,6 +1678,10 @@
         els.btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
         els.modelSelect = document.getElementById('model-select');
         els.settingApiKey = document.getElementById('setting-api-key');
+        els.presetKeySelect = document.getElementById('preset-key-select');
+        els.btnAddKeyPreset = document.getElementById('btn-add-key-preset');
+        els.btnEditKeyPreset = document.getElementById('btn-edit-key-preset');
+        els.btnDelKeyPreset = document.getElementById('btn-del-key-preset');
         els.settingBaseUrl = document.getElementById('setting-base-url');
         els.presetUrlSelect = document.getElementById('preset-url-select');
         els.btnAddUrlPreset = document.getElementById('btn-add-url-preset');
@@ -1712,6 +1730,7 @@
           els.settingApiKey.value = StorageModule.getApiKey();
           els.settingBaseUrl.value = StorageModule.getBaseUrl();
           UIModule.renderUrlPresets();
+          UIModule.renderKeyPresets();
           const params = StorageModule.getParams();
           els.paramTemp.value = params.temperature || 0.7;
           els.valTemp.innerText = params.temperature || 0.7;
@@ -1754,6 +1773,56 @@
           UIModule.renderUrlPresets();
           els.settingBaseUrl.value = els.presetUrlSelect.value;
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
+        });
+
+        // API Key Preset Handlers
+        els.presetKeySelect.addEventListener('change', (e) => {
+          if (e.target.value) {
+            els.settingApiKey.value = e.target.value;
+          }
+        });
+
+        els.btnAddKeyPreset.addEventListener('click', () => {
+          const currentKey = els.settingApiKey.value.trim();
+          if (!currentKey) {
+            UtilityModule.showToast('முதலாவதாக API Key பாக்ஸில் சாவியை டைப் செய்யவும்');
+            return;
+          }
+          let name = prompt("Key அடையாள பெயர் உள்ளிடவும் (எ.கா: Groq Primary, Gemini Key):", "My API Key");
+          if (!name) return;
+          const presets = StorageModule.getKeyPresets();
+          presets.push({ name, key: currentKey });
+          StorageModule.saveKeyPresets(presets);
+          UIModule.renderKeyPresets();
+          els.presetKeySelect.value = currentKey;
+          UtilityModule.showToast('புதிய API Key சேமிக்கப்பட்டது');
+        });
+
+        els.btnEditKeyPreset.addEventListener('click', () => {
+          const selectedKey = els.presetKeySelect.value;
+          if (!selectedKey) return;
+          let presets = StorageModule.getKeyPresets();
+          const targetIndex = presets.findIndex(p => p.key === selectedKey);
+          if (targetIndex !== -1) {
+            let newName = prompt("புதிய பெயரை டைப் செய்யவும்:", presets[targetIndex].name);
+            if (newName) {
+              presets[targetIndex].name = newName;
+              StorageModule.saveKeyPresets(presets);
+              UIModule.renderKeyPresets();
+              UtilityModule.showToast('Key பெயர் மாற்றப்பட்டது');
+            }
+          }
+        });
+
+        els.btnDelKeyPreset.addEventListener('click', () => {
+          const selectedKey = els.presetKeySelect.value;
+          if (!selectedKey) return;
+          let presets = StorageModule.getKeyPresets();
+          presets = presets.filter(p => p.key !== selectedKey);
+          StorageModule.saveKeyPresets(presets);
+          UIModule.renderKeyPresets();
+          els.settingApiKey.value = els.presetKeySelect.value || '';
+          UtilityModule.showToast('API Key நீக்கப்பட்டது');
         });
 
         els.paramTemp.addEventListener('input', (e) => {
@@ -2100,6 +2169,28 @@
             opt.innerText = `${p.name} (${p.url})`;
             if (p.url === currentBaseUrl) opt.selected = true;
             els.presetUrlSelect.appendChild(opt);
+          });
+        },
+
+        renderKeyPresets() {
+          const presets = StorageModule.getKeyPresets();
+          const currentApiKey = StorageModule.getApiKey();
+          els.presetKeySelect.innerHTML = '';
+          
+          if (presets.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.innerText = '-- சேமிக்கப்பட்ட API Keys இல்லை --';
+            els.presetKeySelect.appendChild(opt);
+            return;
+          }
+
+          presets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.key;
+            opt.innerText = `${p.name} (${p.key.slice(0,6)}...${p.key.slice(-4)})`;
+            if (p.key === currentApiKey) opt.selected = true;
+            els.presetKeySelect.appendChild(opt);
           });
         },
 
