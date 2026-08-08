@@ -1894,15 +1894,15 @@
           const deltaX = touchEndX - touchStartX;
           const deltaY = touchEndY - touchStartY;
 
-          // Reliable touch gesture detection requiring horizontal movement > vertical movement
-          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 40) {
+          // Highly responsive touch gesture trigger across any screen position
+          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 20) {
             const isSidebarOpen = els.sidebar.classList.contains('open');
 
-            // Open gesture: Start swipe from left edge (within 80px) going right
-            if (!isSidebarOpen && touchStartX <= 80 && deltaX > 0) {
+            // Light horizontal swipe right opens sidebar from anywhere on screen
+            if (!isSidebarOpen && deltaX > 0) {
               openSidebar();
             } 
-            // Close gesture: Swipe left when sidebar is open
+            // Light horizontal swipe left closes sidebar
             else if (isSidebarOpen && deltaX < 0) {
               closeSidebar();
             }
@@ -2011,7 +2011,7 @@
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
         });
 
-        // API Key Preset Handlers (Switching key populates input box & updates Profile, Base URL)
+        // API Key Preset Handlers (Fills unmasked raw key directly into API Key input box & active profile)
         els.presetKeySelect.addEventListener('change', async (e) => {
           const selectedId = e.target.value;
           if (!selectedId) return;
