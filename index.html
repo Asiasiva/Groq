@@ -73,6 +73,7 @@
       font-family: var(--font-family);
       font-size: 15px;
       line-height: 1.65;
+      touch-action: pan-y;
     }
 
     body {
@@ -94,6 +95,14 @@
       z-index: 25;
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+    #sidebar-backdrop.active {
+      display: block;
+      opacity: 1;
+      pointer-events: auto;
     }
 
     /* Toast Container */
@@ -642,12 +651,14 @@
       border: 1px solid var(--border-color);
       box-sizing: border-box;
       -webkit-overflow-scrolling: touch;
+      display: flex;
+      justify-content: center;
     }
     .md-content table {
       border-collapse: collapse;
       width: max-content;
       min-width: 100%;
-      margin: 0;
+      margin: 0 auto;
     }
     .md-content th, .md-content td {
       border: 1px solid var(--border-color);
@@ -695,9 +706,6 @@
       }
       #sidebar.open {
         transform: translateX(0);
-      }
-      #sidebar.open ~ #sidebar-backdrop {
-        display: block;
       }
       #stats-display { display: none; }
       
@@ -858,6 +866,10 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
+          <label>API Provider</label>
+          <select id="setting-provider-select" class="form-control"></select>
+        </div>
+        <div class="form-group">
           <label>Base URL Preset Dropdown</label>
           <div style="display:flex; gap:6px;">
             <select id="preset-url-select" class="form-control" style="flex:1;"></select>
@@ -927,7 +939,7 @@
   <div class="modal-overlay" id="modal-models">
     <div class="modal">
       <div class="modal-header">
-        <span>Groq மாடல்கள்</span>
+        <span id="models-modal-title">மாடல்கள்</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
@@ -1046,8 +1058,21 @@
         PARAMS: 'groq_params',
         PROMPTS: 'groq_prompts',
         URL_PRESETS: 'groq_url_presets',
-        KEY_PRESETS: 'groq_key_presets'
+        KEY_PRESETS: 'groq_key_presets',
+        API_PROFILES: 'groq_api_profiles',
+        ACTIVE_PROFILE_ID: 'groq_active_profile_id'
       };
+
+      const DEFAULT_PROFILES = [
+        { id: 'groq', name: 'Groq Cloud', url: 'https://api.groq.com/openai/v1', key: '' },
+        { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', key: '' },
+        { id: 'openai', name: 'OpenAI (ChatGPT)', url: 'https://api.openai.com/v1', key: '' },
+        { id: 'gemini', name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/', key: '' },
+        { id: 'deepseek', name: 'DeepSeek', url: 'https://api.deepseek.com/v1', key: '' },
+        { id: 'together', name: 'Together AI', url: 'https://api.together.xyz/v1', key: '' },
+        { id: 'mistral', name: 'Mistral AI', url: 'https://api.mistral.ai/v1', key: '' },
+        { id: 'ollama', name: 'Local Ollama', url: 'http://localhost:11434/v1', key: '' }
+      ];
 
       const safeParse = (key, fallback) => {
         try {
@@ -1059,29 +1084,87 @@
         }
       };
 
-      const DEFAULT_URL_PRESETS = [
-        { name: 'Groq Cloud', url: 'https://api.groq.com/openai/v1' },
-        { name: 'OpenRouter', url: 'https://openrouter.ai/api/v1' },
-        { name: 'Google Gemini', url: 'https://generativelanguage.googleapis.com/v1beta/openai/' },
-        { name: 'OpenAI (ChatGPT)', url: 'https://api.openai.com/v1' },
-        { name: 'DeepSeek', url: 'https://api.deepseek.com/v1' },
-        { name: 'Together AI', url: 'https://api.together.xyz/v1' },
-        { name: 'Mistral AI', url: 'https://api.mistral.ai/v1' },
-        { name: 'Local Ollama', url: 'http://localhost:11434/v1' }
-      ];
+      const DEFAULT_URL_PRESETS = DEFAULT_PROFILES.map(p => ({ name: p.name, url: p.url }));
 
       return {
-        getApiKey: () => localStorage.getItem(KEYS.API_KEY) || '',
-        setApiKey: (key) => localStorage.setItem(KEYS.API_KEY, key),
-        clearApiKey: () => localStorage.removeItem(KEYS.API_KEY),
+        getProfiles: () => {
+          let profiles = safeParse(KEYS.API_PROFILES, null);
+          if (!profiles || !Array.isArray(profiles) || profiles.length === 0) {
+            profiles = JSON.parse(JSON.stringify(DEFAULT_PROFILES));
+            const oldKey = localStorage.getItem(KEYS.API_KEY);
+            const oldUrl = localStorage.getItem(KEYS.BASE_URL);
+            if (oldKey) profiles[0].key = oldKey;
+            if (oldUrl) profiles[0].url = oldUrl;
+            localStorage.setItem(KEYS.API_PROFILES, JSON.stringify(profiles));
+          }
+          return profiles;
+        },
+        saveProfiles: (profiles) => localStorage.setItem(KEYS.API_PROFILES, JSON.stringify(profiles)),
 
-        getBaseUrl: () => localStorage.getItem(KEYS.BASE_URL) || 'https://api.groq.com/openai/v1',
-        setBaseUrl: (url) => localStorage.setItem(KEYS.BASE_URL, url),
+        getActiveProfileId: () => localStorage.getItem(KEYS.ACTIVE_PROFILE_ID) || 'groq',
+        setActiveProfileId: (id) => localStorage.setItem(KEYS.ACTIVE_PROFILE_ID, id),
+
+        getActiveProfile: () => {
+          const profiles = StorageModule.getProfiles();
+          const activeId = StorageModule.getActiveProfileId();
+          return profiles.find(p => p.id === activeId) || profiles[0];
+        },
+
+        updateActiveProfile: (key, url) => {
+          const profiles = StorageModule.getProfiles();
+          const activeId = StorageModule.getActiveProfileId();
+          const profile = profiles.find(p => p.id === activeId);
+          if (profile) {
+            if (key !== undefined) profile.key = key;
+            if (url !== undefined) profile.url = url;
+            StorageModule.saveProfiles(profiles);
+          }
+          // Backwards compatibility sync
+          if (key !== undefined) localStorage.setItem(KEYS.API_KEY, key);
+          if (url !== undefined) localStorage.setItem(KEYS.BASE_URL, url);
+        },
+
+        getApiKey: () => {
+          const profile = StorageModule.getActiveProfile();
+          return profile ? profile.key : (localStorage.getItem(KEYS.API_KEY) || '');
+        },
+        setApiKey: (key) => StorageModule.updateActiveProfile(key, undefined),
+        clearApiKey: () => StorageModule.updateActiveProfile('', undefined),
+
+        getBaseUrl: () => {
+          const profile = StorageModule.getActiveProfile();
+          return profile ? profile.url : (localStorage.getItem(KEYS.BASE_URL) || 'https://api.groq.com/openai/v1');
+        },
+        setBaseUrl: (url) => StorageModule.updateActiveProfile(undefined, url),
 
         getUrlPresets: () => safeParse(KEYS.URL_PRESETS, DEFAULT_URL_PRESETS),
         saveUrlPresets: (presets) => localStorage.setItem(KEYS.URL_PRESETS, JSON.stringify(presets)),
 
-        getKeyPresets: () => safeParse(KEYS.KEY_PRESETS, []),
+        getKeyPresets: () => {
+          const raw = safeParse(KEYS.KEY_PRESETS, []);
+          const activeUrl = StorageModule.getBaseUrl();
+          const activeProfileId = StorageModule.getActiveProfileId();
+
+          // Normalize backward compatible structure
+          return raw.map((item, index) => {
+            if (typeof item === 'string') {
+              return {
+                id: 'key_' + index + '_' + Date.now(),
+                name: 'API Key ' + (index + 1),
+                key: item,
+                url: activeUrl,
+                providerId: activeProfileId
+              };
+            }
+            return {
+              id: item.id || ('key_' + index + '_' + Date.now()),
+              name: item.name || 'API Key',
+              key: item.key || '',
+              url: item.url || activeUrl,
+              providerId: item.providerId || activeProfileId
+            };
+          });
+        },
         saveKeyPresets: (presets) => localStorage.setItem(KEYS.KEY_PRESETS, JSON.stringify(presets)),
 
         getTheme: () => localStorage.getItem(KEYS.THEME) || 'dark',
@@ -1144,6 +1227,11 @@
             toast.style.transition = 'opacity 0.2s';
             setTimeout(() => toast.remove(), 200);
           }, 2500);
+        },
+        maskApiKey: (key) => {
+          if (!key) return '';
+          if (key.length <= 10) return '••••••••';
+          return `${key.slice(0, 6)}...${key.slice(-4)}`;
         }
       };
     })();
@@ -1226,7 +1314,7 @@
     })();
 
     /* --------------------------------------------------------------------------
-       4. API MODULE (WITH ROBUST CANCELLATION & STREAM READER CLEANUP)
+       4. API MODULE (WITH ROBUST CANCELLATION & TOKEN ESTIMATION)
        -------------------------------------------------------------------------- */
     const APIModule = (() => {
       const fetchWithTimeoutAndRetry = async (url, options, retries = 2, timeoutMs = 15000) => {
@@ -1251,17 +1339,60 @@
         }
       };
 
+      const estimateTokens = (text) => {
+        if (!text) return 0;
+        return Math.ceil(text.length / 3.8);
+      };
+
+      const getModelTokenLimit = (modelId, modelsList = []) => {
+        const found = modelsList.find(m => m.id === modelId);
+        let contextWindow = 32768;
+        let maxOutput = 4096;
+
+        if (found) {
+          if (found.context_window) contextWindow = found.context_window;
+          if (found.max_output_tokens) maxOutput = found.max_output_tokens;
+          else if (found.max_completion_tokens) maxOutput = found.max_completion_tokens;
+        } else {
+          const lower = (modelId || '').toLowerCase();
+          if (lower.includes('gpt-4o') || lower.includes('o1') || lower.includes('o3')) {
+            contextWindow = 128000;
+            maxOutput = 16384;
+          } else if (lower.includes('claude-3-5') || lower.includes('sonnet')) {
+            contextWindow = 200000;
+            maxOutput = 8192;
+          } else if (lower.includes('gemini-1.5') || lower.includes('gemini-2.0')) {
+            contextWindow = 1000000;
+            maxOutput = 8192;
+          } else if (lower.includes('llama-3.3') || lower.includes('llama-3.1')) {
+            contextWindow = 128000;
+            maxOutput = 8192;
+          } else if (lower.includes('deepseek')) {
+            contextWindow = 64000;
+            maxOutput = 8192;
+          }
+        }
+
+        return { contextWindow, maxOutput };
+      };
+
       return {
+        getModelTokenLimit,
         async fetchModels() {
           const key = StorageModule.getApiKey();
           let baseUrl = StorageModule.getBaseUrl().trim();
           if (!baseUrl) baseUrl = 'https://api.groq.com/openai/v1';
           baseUrl = baseUrl.replace(/\/+$/, '');
 
-          if(!key) throw new Error("API Key கொடுக்கப்படவில்லை.");
+          if (!key && !baseUrl.includes('localhost') && !baseUrl.includes('127.0.0.1')) {
+            throw new Error("API Key கொடுக்கப்படவில்லை.");
+          }
+
+          const headers = {};
+          if (key) headers['Authorization'] = `Bearer ${key}`;
 
           const res = await fetchWithTimeoutAndRetry(`${baseUrl}/models`, {
-            headers: { 'Authorization': `Bearer ${key}` }
+            headers: headers
           });
 
           const data = await res.json();
@@ -1275,6 +1406,27 @@
           baseUrl = baseUrl.replace(/\/+$/, '');
 
           const params = StorageModule.getParams();
+          const activeProfile = StorageModule.getActiveProfile();
+          const { contextWindow, maxOutput } = getModelTokenLimit(model, ChatModule.getModels());
+
+          // Input tokens calculation with conservative safety margin
+          let totalInputTokens = 0;
+          messages.forEach(m => {
+            totalInputTokens += estimateTokens(m.content || '');
+          });
+
+          const safeContextLimit = Math.floor(contextWindow * 0.95);
+          const remainingContext = Math.max(256, safeContextLimit - totalInputTokens);
+
+          let calculatedMaxTokens = Math.min(maxOutput, remainingContext);
+
+          // Respect user explicit max tokens setting if defined
+          if (params.maxTokens && parseInt(params.maxTokens) > 0) {
+            const userTokens = parseInt(params.maxTokens);
+            calculatedMaxTokens = Math.min(userTokens, remainingContext);
+          }
+
+          calculatedMaxTokens = Math.max(64, Math.floor(calculatedMaxTokens));
 
           const payload = {
             model: model,
@@ -1283,14 +1435,19 @@
             temperature: parseFloat(params.temperature) || 0.7
           };
 
-          if (params.maxTokens) payload.max_tokens = parseInt(params.maxTokens);
+          // Use max_completion_tokens or max_tokens appropriately
+          if (activeProfile.id === 'openai' && (model.includes('o1') || model.includes('o3'))) {
+            payload.max_completion_tokens = calculatedMaxTokens;
+          } else {
+            payload.max_tokens = calculatedMaxTokens;
+          }
+
+          const headers = { 'Content-Type': 'application/json' };
+          if (key) headers['Authorization'] = `Bearer ${key}`;
 
           const res = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${key}`,
-              'Content-Type': 'application/json'
-            },
+            headers: headers,
             body: JSON.stringify(payload),
             signal: signal
           });
@@ -1391,11 +1548,12 @@
           if (window.innerWidth <= 768) UIModule.closeSidebar();
         },
         createChat: () => {
+          const currentChat = ChatModule.getActiveChat();
           const newChat = {
             id: UtilityModule.generateUUID(),
             title: 'புதிய அரட்டை',
             messages: [],
-            model: StorageModule.getLastModel() || (models[0]?.id || ''),
+            model: currentChat ? currentChat.model : (StorageModule.getLastModel() || (models[0]?.id || '')),
             systemPrompt: '',
             pinned: false,
             updatedAt: Date.now()
@@ -1536,7 +1694,7 @@
               }
             });
           } catch(err) {
-            // Ignore intentional user cancellation
+            // Graceful handling of user abort stop - do not render AbortError text
             if(err.name !== 'AbortError' && !abortController?.signal.aborted) {
               assistantMsg.content += `\n\n**பிழை:** ${err.message}`;
               UIModule.updateStreamingMessage(assistantMsg.content);
@@ -1564,7 +1722,7 @@
 
           const lastUserMsg = [...currentChat.messages].reverse().find(m => m.role === 'user');
           if (lastUserMsg) {
-            ChatModule.sendMessage(lastUserMsg.content, true);
+            ChatModule.sendMessage(lastUserMsg.displayContent || lastUserMsg.content, true);
           }
         },
 
@@ -1581,12 +1739,13 @@
         stopGeneration: () => {
           if (!abortController) return;
 
-          try {
-            abortController.abort();
-          } catch(e) {}
-
+          const localController = abortController;
           abortController = null;
           currentRequestId = null;
+
+          try {
+            localController.abort();
+          } catch(e) {}
 
           UIModule.toggleStopButton(false);
           UIModule.removeTypingCursor();
@@ -1677,6 +1836,7 @@
         els.btnNewChat = document.getElementById('btn-new-chat');
         els.btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
         els.modelSelect = document.getElementById('model-select');
+        els.settingProviderSelect = document.getElementById('setting-provider-select');
         els.settingApiKey = document.getElementById('setting-api-key');
         els.presetKeySelect = document.getElementById('preset-key-select');
         els.btnAddKeyPreset = document.getElementById('btn-add-key-preset');
@@ -1697,16 +1857,79 @@
         els.fileInput = document.getElementById('file-input');
       }
 
+      function openSidebar() {
+        if (els.sidebar) els.sidebar.classList.add('open');
+        if (els.sidebarBackdrop) els.sidebarBackdrop.classList.add('active');
+      }
+
+      function closeSidebar() {
+        if (els.sidebar) els.sidebar.classList.remove('open');
+        if (els.sidebarBackdrop) els.sidebarBackdrop.classList.remove('active');
+      }
+
+      function setupMobileSwipeGestures() {
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+
+        window.addEventListener('touchstart', (e) => {
+          if (window.innerWidth > 768) return;
+          if (e.touches.length !== 1) return;
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchEndX = touchStartX;
+          touchEndY = touchStartY;
+        }, { passive: true });
+
+        window.addEventListener('touchmove', (e) => {
+          if (window.innerWidth > 768) return;
+          if (e.touches.length !== 1) return;
+          touchEndX = e.touches[0].clientX;
+          touchEndY = e.touches[0].clientY;
+        }, { passive: true });
+
+        window.addEventListener('touchend', () => {
+          if (window.innerWidth > 768) return;
+          const deltaX = touchEndX - touchStartX;
+          const deltaY = touchEndY - touchStartY;
+
+          // Reliable touch gesture detection requiring horizontal movement > vertical movement
+          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 40) {
+            const isSidebarOpen = els.sidebar.classList.contains('open');
+
+            // Open gesture: Start swipe from left edge (within 80px) going right
+            if (!isSidebarOpen && touchStartX <= 80 && deltaX > 0) {
+              openSidebar();
+            } 
+            // Close gesture: Swipe left when sidebar is open
+            else if (isSidebarOpen && deltaX < 0) {
+              closeSidebar();
+            }
+          }
+        }, { passive: true });
+      }
+
       function setupEventListeners() {
         els.btnNewChat.addEventListener('click', () => ChatModule.createChat());
-        els.btnToggleSidebar.addEventListener('click', () => els.sidebar.classList.toggle('open'));
-        els.sidebarBackdrop.addEventListener('click', () => els.sidebar.classList.remove('open'));
+        els.btnToggleSidebar.addEventListener('click', () => {
+          if (els.sidebar.classList.contains('open')) closeSidebar();
+          else openSidebar();
+        });
+        els.sidebarBackdrop.addEventListener('click', () => closeSidebar());
+
+        setupMobileSwipeGestures();
 
         els.btnSend.addEventListener('click', () => handleSend());
+        
+        // Chat textarea Enter key creates a new line exclusively (no auto send)
         els.chatInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            handleSend();
+          if (e.key === 'Enter') {
+            // Native default multiline insertion for Enter and Shift+Enter
+            setTimeout(() => {
+              els.chatInput.style.height = 'auto';
+              els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
+            }, 0);
           }
         });
 
@@ -1727,6 +1950,7 @@
         });
 
         document.getElementById('btn-open-settings').addEventListener('click', () => {
+          UIModule.renderProvidersSelect();
           els.settingApiKey.value = StorageModule.getApiKey();
           els.settingBaseUrl.value = StorageModule.getBaseUrl();
           UIModule.renderUrlPresets();
@@ -1738,7 +1962,19 @@
           els.settingTheme.value = StorageModule.getTheme();
           els.settingAccent.value = StorageModule.getAccent();
           document.getElementById('modal-settings').classList.add('active');
-          if (window.innerWidth <= 768) UIModule.closeSidebar();
+          if (window.innerWidth <= 768) closeSidebar();
+        });
+
+        els.settingProviderSelect.addEventListener('change', async (e) => {
+          const newProfileId = e.target.value;
+          StorageModule.setActiveProfileId(newProfileId);
+          const activeProfile = StorageModule.getActiveProfile();
+          els.settingApiKey.value = activeProfile.key || '';
+          els.settingBaseUrl.value = activeProfile.url || '';
+          UIModule.renderUrlPresets();
+          UIModule.renderKeyPresets();
+          await initModels();
+          UtilityModule.showToast(`Provider: ${activeProfile.name}`);
         });
 
         els.presetUrlSelect.addEventListener('change', (e) => {
@@ -1775,10 +2011,28 @@
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
         });
 
-        // API Key Preset Handlers
-        els.presetKeySelect.addEventListener('change', (e) => {
-          if (e.target.value) {
-            els.settingApiKey.value = e.target.value;
+        // API Key Preset Handlers (Switching key populates input box & updates Profile, Base URL)
+        els.presetKeySelect.addEventListener('change', async (e) => {
+          const selectedId = e.target.value;
+          if (!selectedId) return;
+          const presets = StorageModule.getKeyPresets();
+          const target = presets.find(p => p.id === selectedId);
+          if (target) {
+            if (target.providerId) {
+              StorageModule.setActiveProfileId(target.providerId);
+              UIModule.renderProvidersSelect();
+            }
+            if (target.url) {
+              StorageModule.setBaseUrl(target.url);
+              els.settingBaseUrl.value = target.url;
+            }
+            if (target.key) {
+              StorageModule.setApiKey(target.key);
+              els.settingApiKey.value = target.key;
+            }
+            UIModule.renderUrlPresets();
+            await initModels();
+            UtilityModule.showToast(`Key Loaded: ${target.name}`);
           }
         });
 
@@ -1790,19 +2044,35 @@
           }
           let name = prompt("Key அடையாள பெயர் உள்ளிடவும் (எ.கா: Groq Primary, Gemini Key):", "My API Key");
           if (!name) return;
+
+          const currentUrl = els.settingBaseUrl.value.trim();
+          const activeProviderId = StorageModule.getActiveProfileId();
           const presets = StorageModule.getKeyPresets();
-          presets.push({ name, key: currentKey });
+
+          const existingIndex = presets.findIndex(p => p.key === currentKey && p.providerId === activeProviderId);
+          if (existingIndex !== -1) {
+            presets[existingIndex].name = name;
+            presets[existingIndex].url = currentUrl;
+          } else {
+            presets.push({
+              id: 'key_' + Date.now(),
+              name: name,
+              key: currentKey,
+              url: currentUrl,
+              providerId: activeProviderId
+            });
+          }
+
           StorageModule.saveKeyPresets(presets);
           UIModule.renderKeyPresets();
-          els.presetKeySelect.value = currentKey;
           UtilityModule.showToast('புதிய API Key சேமிக்கப்பட்டது');
         });
 
         els.btnEditKeyPreset.addEventListener('click', () => {
-          const selectedKey = els.presetKeySelect.value;
-          if (!selectedKey) return;
+          const selectedId = els.presetKeySelect.value;
+          if (!selectedId) return;
           let presets = StorageModule.getKeyPresets();
-          const targetIndex = presets.findIndex(p => p.key === selectedKey);
+          const targetIndex = presets.findIndex(p => p.id === selectedId);
           if (targetIndex !== -1) {
             let newName = prompt("புதிய பெயரை டைப் செய்யவும்:", presets[targetIndex].name);
             if (newName) {
@@ -1815,13 +2085,12 @@
         });
 
         els.btnDelKeyPreset.addEventListener('click', () => {
-          const selectedKey = els.presetKeySelect.value;
-          if (!selectedKey) return;
+          const selectedId = els.presetKeySelect.value;
+          if (!selectedId) return;
           let presets = StorageModule.getKeyPresets();
-          presets = presets.filter(p => p.key !== selectedKey);
+          presets = presets.filter(p => p.id !== selectedId);
           StorageModule.saveKeyPresets(presets);
           UIModule.renderKeyPresets();
-          els.settingApiKey.value = els.presetKeySelect.value || '';
           UtilityModule.showToast('API Key நீக்கப்பட்டது');
         });
 
@@ -1829,7 +2098,7 @@
           els.valTemp.innerText = e.target.value;
         });
 
-        document.getElementById('btn-save-settings').addEventListener('click', () => {
+        document.getElementById('btn-save-settings').addEventListener('click', async () => {
           StorageModule.setApiKey(els.settingApiKey.value.trim());
           StorageModule.setBaseUrl(els.settingBaseUrl.value.trim());
           StorageModule.setTheme(els.settingTheme.value);
@@ -1840,7 +2109,7 @@
           });
           applyTheme();
           UIModule.closeModals();
-          initModels();
+          await initModels();
           UtilityModule.showToast('அமைப்புகள் சேமிக்கப்பட்டன');
         });
 
@@ -1862,7 +2131,7 @@
         document.getElementById('btn-clear-key').addEventListener('click', () => {
           StorageModule.clearApiKey();
           els.settingApiKey.value = '';
-          UtilityModule.showToast('API Key நீக்கப்பட்டது');
+          UtilityModule.showToast('Active API Key நீக்கப்பட்டது');
         });
 
         els.settingTheme.addEventListener('change', (e) => {
@@ -1876,10 +2145,11 @@
         });
 
         els.modelSelect.addEventListener('change', (e) => {
+          const newModel = e.target.value;
           const chat = ChatModule.getActiveChat();
           if(chat) {
-            chat.model = e.target.value;
-            StorageModule.setLastModel(e.target.value);
+            chat.model = newModel;
+            StorageModule.setLastModel(newModel);
             StorageModule.saveChats(ChatModule.getChats());
           }
         });
@@ -1911,7 +2181,7 @@
         document.getElementById('btn-open-prompts').addEventListener('click', () => {
           UIModule.renderPrompts();
           document.getElementById('modal-prompts').classList.add('active');
-          if (window.innerWidth <= 768) UIModule.closeSidebar();
+          if (window.innerWidth <= 768) closeSidebar();
         });
 
         document.getElementById('btn-add-prompt').addEventListener('click', () => {
@@ -1981,6 +2251,8 @@
           recognition.onresult = (e) => {
             els.chatInput.value += ' ' + e.results[0][0].transcript;
             btnMic.style.color = 'var(--text-secondary)';
+            els.chatInput.style.height = 'auto';
+            els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
           };
 
           recognition.onerror = () => { btnMic.style.color = 'var(--text-secondary)'; };
@@ -2085,7 +2357,8 @@
           }
           if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
             e.preventDefault();
-            els.sidebar.classList.toggle('open');
+            if (els.sidebar.classList.contains('open')) closeSidebar();
+            else openSidebar();
           }
         });
       }
@@ -2142,7 +2415,7 @@
         },
 
         closeSidebar() {
-          if (els.sidebar) els.sidebar.classList.remove('open');
+          closeSidebar();
         },
 
         closeModals() {
@@ -2156,6 +2429,19 @@
 
         showStats(text) {
           els.statsDisplay.innerText = text;
+        },
+
+        renderProvidersSelect() {
+          const profiles = StorageModule.getProfiles();
+          const activeId = StorageModule.getActiveProfileId();
+          els.settingProviderSelect.innerHTML = '';
+          profiles.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name;
+            if (p.id === activeId) opt.selected = true;
+            els.settingProviderSelect.appendChild(opt);
+          });
         },
 
         renderUrlPresets() {
@@ -2187,8 +2473,9 @@
 
           presets.forEach(p => {
             const opt = document.createElement('option');
-            opt.value = p.key;
-            opt.innerText = `${p.name} (${p.key.slice(0,6)}...${p.key.slice(-4)})`;
+            opt.value = p.id;
+            const masked = UtilityModule.maskApiKey(p.key);
+            opt.innerText = `${p.name} (${masked})`;
             if (p.key === currentApiKey) opt.selected = true;
             els.presetKeySelect.appendChild(opt);
           });
@@ -2320,7 +2607,7 @@
           if(models.length === 0) {
             const opt = document.createElement('option');
             opt.value = '';
-            opt.innerText = 'No Models Loaded';
+            opt.innerText = 'Models Loading...';
             els.modelSelect.appendChild(opt);
             return;
           }
@@ -2335,6 +2622,9 @@
         },
 
         renderModelsModal() {
+          const activeProfile = StorageModule.getActiveProfile();
+          document.getElementById('models-modal-title').innerText = `${activeProfile.name} மாடல்கள்`;
+
           const list = document.getElementById('models-detailed-list');
           list.innerHTML = '';
           const query = document.getElementById('model-search').value.toLowerCase();
@@ -2353,7 +2643,7 @@
             card.className = 'model-card';
             card.innerHTML = `<div style="display:flex; justify-content:space-between; font-weight:600;">
                                 <span style="word-break:break-all;">${UtilityModule.escapeHTML(m.id)}</span>
-                                <span style="font-size:12px; color:var(--text-secondary);">${m.owned_by || 'Groq'}</span>
+                                <span style="font-size:12px; color:var(--text-secondary);">${m.owned_by || activeProfile.name}</span>
                               </div>
                               <div style="font-size:12px; color:var(--text-secondary);">
                                 Context Window: ${m.context_window ? m.context_window.toLocaleString() : 'N/A'} tokens
@@ -2394,6 +2684,8 @@
           els.chatInput.value = cmd;
           UIModule.closeModals();
           els.chatInput.focus();
+          els.chatInput.style.height = 'auto';
+          els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
         },
 
         editPrompt(id) {
@@ -2474,19 +2766,38 @@
        8. INITIALIZATION & ENTRY POINT
        -------------------------------------------------------------------------- */
     async function initModels() {
+      const elsModelSelect = document.getElementById('model-select');
+      if (elsModelSelect) {
+        elsModelSelect.innerHTML = '<option value="">Models Loading...</option>';
+      }
       try {
         const fetchedModels = await APIModule.fetchModels();
-        const chatModels = fetchedModels.filter(m => !m.id.includes('whisper') && !m.id.includes('tts'));
-        ChatModule.setModels(chatModels.length ? chatModels : fetchedModels);
+        const chatModels = fetchedModels.filter(m => !m.id.includes('whisper') && !m.id.includes('tts') && !m.id.includes('embed'));
+        const finalModels = chatModels.length ? chatModels : fetchedModels;
+        ChatModule.setModels(finalModels);
+
+        const currentChat = ChatModule.getActiveChat();
+        if (currentChat) {
+          const exists = finalModels.some(m => m.id === currentChat.model);
+          if (!exists && finalModels.length > 0) {
+            currentChat.model = finalModels[0].id;
+            StorageModule.setLastModel(finalModels[0].id);
+            StorageModule.saveChats(ChatModule.getChats());
+          }
+        }
         UIModule.renderModelOptions();
       } catch (err) {
         console.warn("மாடல்களை ஏற்றுவதில் சிக்கல்:", err.message);
+        ChatModule.setModels([]);
+        UIModule.renderModelOptions();
       }
     }
 
     window.addEventListener('DOMContentLoaded', async () => {
       UIModule.init();
-      if(StorageModule.getApiKey()) {
+      const currentKey = StorageModule.getApiKey();
+      const currentBaseUrl = StorageModule.getBaseUrl();
+      if(currentKey || currentBaseUrl.includes('localhost') || currentBaseUrl.includes('127.0.0.1')) {
         await initModels();
       } else {
         document.getElementById('modal-settings').classList.add('active');
