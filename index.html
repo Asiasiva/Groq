@@ -3,57 +3,54 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Universal AI Chat Studio (Groq / OpenAI Compatible)</title>
+  <title>Universal AI Chat Studio</title>
   <style>
     /* ==========================================================================
-       1. CSS VARIABLES & THEME DEFINITIONS
+       1. CORE DESIGN SYSTEM & THEME DEFINITIONS
        ========================================================================== */
     :root {
       --bg-primary: #131314;
       --bg-secondary: #1e1f20;
       --bg-tertiary: #282a2c;
-      --bg-hover: #333537;
+      --bg-hover: rgba(255, 255, 255, 0.08);
       --text-primary: #e3e3e3;
-      --text-secondary: #aaaaaa;
-      --border-color: #37393b;
-      --accent-color: #4b8afe;
-      --accent-hover: #3b72db;
+      --text-secondary: #9aa0a6;
+      --border-color: rgba(255, 255, 255, 0.1);
+      --border-subtle: rgba(255, 255, 255, 0.05);
+      --accent-color: #a8c7fa;
+      --accent-hover: #7cacf8;
+      --accent-container: #004a77;
       --danger-color: #f28b82;
       --success-color: #81c995;
-      --sidebar-width: 280px;
-      --font-size: 15px;
-      --compact-padding: 12px;
-      --radius-sm: 6px;
-      --radius-md: 12px;
-      --radius-lg: 20px;
-      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-      --code-bg: #0d0d0d;
+      --sidebar-width: 260px;
+      --radius-sm: 8px;
+      --radius-md: 16px;
+      --radius-lg: 28px;
+      --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      --code-bg: #1e1e1e;
     }
 
     [data-theme="light"] {
       --bg-primary: #ffffff;
       --bg-secondary: #f0f4f9;
       --bg-tertiary: #e1e6ed;
-      --bg-hover: #d3d9e3;
+      --bg-hover: rgba(0, 0, 0, 0.05);
       --text-primary: #1f1f1f;
       --text-secondary: #5f6368;
-      --border-color: #dcdfe4;
-      --accent-color: #1a73e8;
-      --accent-hover: #1557b0;
+      --border-color: rgba(0, 0, 0, 0.1);
+      --border-subtle: rgba(0, 0, 0, 0.05);
+      --accent-color: #1b57d6;
+      --accent-hover: #1545ad;
+      --accent-container: #c2e7ff;
       --danger-color: #d93025;
       --success-color: #188038;
       --code-bg: #f6f8fa;
     }
 
-    [data-compact="true"] {
-      --compact-padding: 6px;
-      --font-size: 13.5px;
-    }
-
     /* Accent Customization */
-    [data-accent="emerald"] { --accent-color: #10b981; --accent-hover: #059669; }
-    [data-accent="purple"] { --accent-color: #8b5cf6; --accent-hover: #7c3aed; }
-    [data-accent="amber"] { --accent-color: #f59e0b; --accent-hover: #d97706; }
+    [data-accent="emerald"] { --accent-color: #34d399; --accent-hover: #10b981; }
+    [data-accent="purple"] { --accent-color: #c084fc; --accent-hover: #a855f7; }
+    [data-accent="amber"] { --accent-color: #fbbf24; --accent-hover: #f59e0b; }
 
     * {
       box-sizing: border-box;
@@ -67,135 +64,152 @@
       height: 100dvh;
       width: 100vw;
       overflow: hidden;
-      margin: 0;
-      padding: 0;
     }
 
     body {
       font-family: var(--font-family);
-      font-size: var(--font-size);
+      font-size: 15px;
       background-color: var(--bg-primary);
       color: var(--text-primary);
       display: flex;
-      line-height: 1.5;
-      position: fixed;
-      top: 0;
-      left: 0;
+      line-height: 1.6;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
 
-    /* Overlay for Mobile Sidebar Drawer */
+    /* Backdrop for Mobile Navigation */
     #sidebar-backdrop {
       display: none;
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.6);
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
       z-index: 15;
       backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
     }
 
     /* ==========================================================================
-       2. LAYOUT & UI COMPONENTS
+       2. SIDEBAR NAVIGATION
        ========================================================================== */
-    /* Sidebar */
     #sidebar {
       width: var(--sidebar-width);
       background-color: var(--bg-secondary);
-      border-right: 1px solid var(--border-color);
       display: flex;
       flex-direction: column;
-      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), width 0.2s ease;
+      transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 20;
       flex-shrink: 0;
       height: 100%;
+      border-right: 1px solid var(--border-subtle);
     }
 
     .sidebar-header {
-      padding: 12px;
+      padding: 16px;
       display: flex;
       gap: 8px;
-      border-bottom: 1px solid var(--border-color);
     }
 
     .btn-new-chat {
       flex: 1;
       background-color: var(--bg-tertiary);
       color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      padding: 8px 12px;
-      border-radius: var(--radius-md);
+      border: none;
+      padding: 10px 16px;
+      border-radius: var(--radius-lg);
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: 8px;
+      gap: 10px;
       font-weight: 500;
+      font-size: 14px;
       transition: background 0.2s;
       min-height: 44px;
     }
     .btn-new-chat:hover { background-color: var(--bg-hover); }
 
     .sidebar-search {
-      padding: 8px 12px;
-      border-bottom: 1px solid var(--border-color);
+      padding: 0 16px 12px 16px;
     }
     .search-input {
       width: 100%;
       background: var(--bg-primary);
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-subtle);
       color: var(--text-primary);
-      padding: 10px 12px;
+      padding: 8px 12px;
       border-radius: var(--radius-sm);
-      font-size: 16px;
+      font-size: 13.5px;
+      outline: none;
     }
+    .search-input:focus { border-color: var(--border-color); }
 
     .chat-list {
       flex: 1;
       overflow-y: auto;
-      padding: 8px;
+      padding: 0 8px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      -webkit-overflow-scrolling: touch;
+      gap: 2px;
     }
 
     .chat-item {
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
+      padding: 8px 12px;
+      border-radius: var(--radius-sm);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: space-between;
       color: var(--text-secondary);
-      transition: background 0.2s;
-      min-height: 44px;
+      transition: background 0.15s, color 0.15s;
+      min-height: 40px;
+      font-size: 14px;
     }
     .chat-item:hover { background-color: var(--bg-hover); color: var(--text-primary); }
     .chat-item.active { background-color: var(--bg-tertiary); color: var(--text-primary); font-weight: 500; }
     .chat-item .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 6px; }
-    .chat-item .actions { display: none; gap: 4px; align-items: center; }
+    .chat-item .actions { display: none; gap: 2px; align-items: center; }
     .chat-item:hover .actions { display: flex; }
     .chat-item .icon-btn {
       background: none;
       border: none;
       color: var(--text-secondary);
       cursor: pointer;
-      padding: 6px 8px;
+      padding: 4px;
       border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     .chat-item .icon-btn:hover { color: var(--text-primary); background-color: var(--bg-hover); }
 
     .sidebar-footer {
-      padding: 12px;
-      border-top: 1px solid var(--border-color);
+      padding: 12px 16px;
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 4px;
+      border-top: 1px solid var(--border-subtle);
     }
+    .sidebar-footer-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      padding: 10px 12px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      transition: background 0.2s;
+      width: 100%;
+      text-align: left;
+    }
+    .sidebar-footer-btn:hover { background-color: var(--bg-hover); }
 
-    /* Main Content Area */
+    /* ==========================================================================
+       3. MAIN CHAT CONTENT AREA
+       ========================================================================== */
     #main-content {
       flex: 1;
       display: flex;
@@ -204,91 +218,88 @@
       width: 100%;
       min-width: 0;
       position: relative;
-      overflow: hidden;
     }
 
-    /* Header */
     .top-header {
-      min-height: 56px;
-      border-bottom: 1px solid var(--border-color);
+      height: 56px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 6px 12px;
+      padding: 0 16px;
       background-color: var(--bg-primary);
       flex-shrink: 0;
-      gap: 8px;
-      width: 100%;
+      gap: 12px;
+      z-index: 10;
     }
 
     .model-selector-container {
       display: flex;
       align-items: center;
       gap: 6px;
-      flex: 1;
-      min-width: 0;
+      background: var(--bg-secondary);
+      padding: 4px 10px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-subtle);
     }
 
     .select-dropdown {
-      background: var(--bg-secondary);
+      background: transparent;
       color: var(--text-primary);
-      border: 1px solid var(--border-color);
-      padding: 8px 10px;
-      border-radius: var(--radius-sm);
+      border: none;
       outline: none;
-      font-size: 14px;
+      font-size: 13.5px;
+      font-weight: 500;
       cursor: pointer;
-      width: 100%;
+      max-width: 180px;
       text-overflow: ellipsis;
       white-space: nowrap;
       overflow: hidden;
     }
+    .select-dropdown option {
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+    }
 
-    /* Messages Display */
+    /* Messages Stream */
     #messages-container {
       flex: 1;
       overflow-y: auto;
-      padding: 12px 10px;
+      padding: 24px 16px;
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 24px;
       width: 100%;
-      min-width: 0;
+      max-width: 820px;
+      margin: 0 auto;
       -webkit-overflow-scrolling: touch;
     }
 
     .message-row {
       display: flex;
-      gap: 8px;
+      gap: 16px;
       width: 100%;
       min-width: 0;
-      margin: 0;
     }
 
-    .message-row.user { 
-      justify-content: flex-end; 
+    .message-row.user {
+      justify-content: flex-end;
     }
 
-    .message-row.user .avatar {
-      order: 2;
-    }
+    .message-row.user .avatar { display: none; }
 
     .message-bubble {
-      max-width: 88%;
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
-      background-color: var(--bg-secondary);
-      position: relative;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-      word-break: break-word;
-      overflow-wrap: anywhere;
       min-width: 0;
+      font-size: 15px;
+      line-height: 1.6;
     }
 
     .message-row.user .message-bubble {
-      background-color: var(--bg-tertiary);
-      border-bottom-right-radius: 2px;
-      margin-left: 0;
+      background-color: var(--bg-secondary);
+      border-radius: 20px;
+      padding: 10px 18px;
+      max-width: 85%;
+      color: var(--text-primary);
+      border: 1px solid var(--border-subtle);
     }
 
     .message-row.assistant .message-bubble {
@@ -296,23 +307,19 @@
       width: 100%;
       max-width: 100%;
       padding: 0;
-      box-shadow: none;
-      min-width: 0;
     }
 
     .avatar {
       width: 28px;
       height: 28px;
       border-radius: 50%;
-      background-color: var(--accent-color);
+      background-color: var(--bg-secondary);
+      border: 1px solid var(--border-subtle);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      color: white;
-      font-size: 12px;
+      color: var(--accent-color);
       flex-shrink: 0;
-      margin-top: 2px;
     }
 
     .msg-meta {
@@ -320,27 +327,29 @@
       color: var(--text-secondary);
       margin-top: 8px;
       display: flex;
-      gap: 8px;
+      gap: 12px;
       align-items: center;
-      flex-wrap: wrap;
     }
 
-    .msg-actions { display: flex; gap: 4px; margin-top: 4px; }
+    .msg-actions { display: flex; gap: 4px; opacity: 0.7; transition: opacity 0.2s; }
+    .message-row:hover .msg-actions { opacity: 1; }
     .msg-actions button {
       background: none;
       border: none;
       color: var(--text-secondary);
       cursor: pointer;
-      font-size: 0.85em;
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
     }
-    .msg-actions button:hover { background-color: var(--bg-hover); color: var(--text-primary); }
+    .msg-actions button:hover { color: var(--text-primary); background-color: var(--bg-hover); }
 
-    /* Input Area */
+    /* Floating Input Composer Area */
     .input-container {
       width: 100%;
-      padding: 0 10px 10px 10px;
+      max-width: 820px;
+      margin: 0 auto;
+      padding: 0 16px 16px 16px;
       flex-shrink: 0;
     }
 
@@ -348,13 +357,16 @@
       background-color: var(--bg-secondary);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-      padding: 8px 12px;
+      padding: 10px 14px;
       display: flex;
       flex-direction: column;
       gap: 8px;
       width: 100%;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-      transition: border-color 0.2s;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .input-box:focus-within {
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .input-box.drag-over {
@@ -362,21 +374,19 @@
       background-color: var(--bg-tertiary);
     }
 
-    .attachments-preview { display: flex; gap: 8px; flex-wrap: wrap; }
+    .attachments-preview { display: flex; gap: 6px; flex-wrap: wrap; }
 
     .attachment-chip {
       background: var(--bg-tertiary);
-      padding: 4px 8px;
-      border-radius: var(--radius-sm);
-      font-size: 0.8em;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
       display: flex;
       align-items: center;
       gap: 6px;
-      border: 1px solid var(--border-color);
-      max-width: 100%;
+      border: 1px solid var(--border-subtle);
     }
-    .attachment-chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .attachment-chip .remove-file { cursor: pointer; color: var(--danger-color); font-weight: bold; padding: 2px 4px; }
+    .attachment-chip .remove-file { cursor: pointer; color: var(--danger-color); font-weight: bold; margin-left: 2px; }
 
     .chat-textarea {
       width: 100%;
@@ -384,35 +394,35 @@
       border: none;
       color: var(--text-primary);
       resize: none;
-      max-height: 150px;
+      max-height: 160px;
       min-height: 24px;
       outline: none;
       font-family: inherit;
-      font-size: 16px;
+      font-size: 15px;
+      line-height: 1.5;
     }
 
     .input-toolbar {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 8px;
     }
 
-    .tool-btn-group { display: flex; gap: 4px; }
+    .tool-btn-group { display: flex; gap: 2px; }
 
     .btn-icon {
       background: transparent;
       border: none;
       color: var(--text-secondary);
-      padding: 8px;
+      padding: 6px;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s, color 0.2s;
-      min-width: 40px;
-      min-height: 40px;
+      transition: background 0.15s, color 0.15s;
+      width: 34px;
+      height: 34px;
     }
     .btn-icon:hover { background-color: var(--bg-hover); color: var(--text-primary); }
 
@@ -421,75 +431,85 @@
       color: var(--bg-primary);
       border: none;
       border-radius: 50%;
-      width: 40px;
-      height: 40px;
+      width: 34px;
+      height: 34px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: bold;
-      transition: opacity 0.2s;
+      transition: opacity 0.2s, transform 0.1s;
       flex-shrink: 0;
     }
     .btn-send:disabled { opacity: 0.3; cursor: not-allowed; }
 
-    /* Modal / Dialog */
+    /* ==========================================================================
+       4. MODALS & DIALOGS
+       ========================================================================== */
     .modal-overlay {
       position: fixed;
-      top:0; left:0; right:0; bottom:0;
+      inset: 0;
       background: rgba(0,0,0,0.6);
       display: none;
       align-items: center;
       justify-content: center;
       z-index: 100;
-      backdrop-filter: blur(2px);
-      padding: 12px;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      padding: 16px;
     }
     .modal-overlay.active { display: flex; }
 
     .modal {
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
-      width: 500px;
+      width: 480px;
       max-width: 100%;
-      max-height: 90vh;
-      max-height: 90dvh;
+      max-height: 85vh;
+      max-height: 85dvh;
       border-radius: var(--radius-md);
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      box-shadow: 0 16px 32px rgba(0,0,0,0.4);
     }
 
     .modal-header {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-color);
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-subtle);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-weight: bold;
+      font-weight: 600;
+      font-size: 16px;
     }
 
     .modal-body {
-      padding: 16px;
+      padding: 20px;
       overflow-y: auto;
       display: flex;
       flex-direction: column;
       gap: 16px;
-      -webkit-overflow-scrolling: touch;
     }
 
     .modal-footer {
-      padding: 12px 16px;
-      border-top: 1px solid var(--border-color);
+      padding: 12px 20px;
+      border-top: 1px solid var(--border-subtle);
       display: flex;
       justify-content: flex-end;
       gap: 8px;
-      flex-wrap: wrap;
+    }
+
+    .form-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-secondary);
+      margin-top: 4px;
     }
 
     .form-group { display: flex; flex-direction: column; gap: 6px; }
-    .form-group label { font-size: 0.85em; color: var(--text-secondary); }
+    .form-group label { font-size: 13px; color: var(--text-secondary); }
     .form-control {
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
@@ -498,56 +518,78 @@
       border-radius: var(--radius-sm);
       outline: none;
       font-family: inherit;
-      font-size: 16px;
+      font-size: 14px;
     }
     .form-control:focus { border-color: var(--accent-color); }
 
-    /* Markdown Basics & Formatting */
+    /* Toast Notification System */
+    #toast-container {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      padding: 10px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 13.5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      animation: toastIn 0.2s ease;
+      pointer-events: auto;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ==========================================================================
+       5. MARKDOWN & TYPOGRAPHY STYLING
+       ========================================================================== */
     .md-content {
       width: 100%;
       min-width: 0;
       overflow-wrap: anywhere;
       word-break: break-word;
     }
-    .md-content p { margin-bottom: 8px; }
+    .md-content p { margin-bottom: 12px; }
     .md-content p:last-child { margin-bottom: 0; }
-    .md-content h1, .md-content h2, .md-content h3, .md-content h4, .md-content h5, .md-content h6 {
-      margin: 12px 0 6px 0;
+    .md-content h1, .md-content h2, .md-content h3, .md-content h4 {
+      margin: 16px 0 8px 0;
       font-weight: 600;
+      line-height: 1.3;
     }
     .md-content pre {
       background: var(--code-bg);
-      padding: 12px;
       border-radius: var(--radius-sm);
       overflow-x: auto;
-      margin: 8px 0;
-      position: relative;
-      border: 1px solid var(--border-color);
-      -webkit-overflow-scrolling: touch;
-      max-width: 100%;
+      margin: 12px 0;
+      border: 1px solid var(--border-subtle);
     }
     .md-content code {
-      font-family: monospace;
-      font-size: 0.9em;
-      background: rgba(255,255,255,0.1);
-      padding: 2px 4px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 0.88em;
+      background: rgba(255,255,255,0.08);
+      padding: 2px 6px;
       border-radius: 4px;
-      word-break: break-word;
     }
     .md-content pre code { 
       background: transparent; 
-      padding: 0; 
-      word-break: normal;
+      padding: 12px; 
+      display: block;
+      overflow-x: auto;
     }
     .code-block-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255,255,255,0.05);
-      padding: 6px 10px;
-      margin: -12px -12px 8px -12px;
-      border-bottom: 1px solid var(--border-color);
-      font-size: 0.8em;
+      background: rgba(255,255,255,0.04);
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border-subtle);
+      font-size: 12px;
       color: var(--text-secondary);
     }
     .btn-copy-code {
@@ -555,75 +597,51 @@
       border: none;
       color: var(--text-secondary);
       cursor: pointer;
-      font-size: 0.8em;
-      padding: 2px 6px;
+      font-size: 12px;
     }
     .btn-copy-code:hover { color: var(--text-primary); }
 
-    /* Fixed Responsive Table Container & Styling */
     .table-wrapper {
       width: 100%;
       overflow-x: auto;
-      margin: 8px 0;
+      margin: 12px 0;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-color);
-      -webkit-overflow-scrolling: touch;
     }
     .md-content table {
       border-collapse: collapse;
       width: 100%;
-      min-width: 500px; /* அட்டவணைச் செல்கள் குறுகாமல் இருக்க சுலபமான scroll வசதி */
-      margin: 0;
+      min-width: 480px;
     }
     .md-content th, .md-content td {
-      border: 1px solid var(--border-color);
+      border: 1px solid var(--border-subtle);
       padding: 8px 12px;
       text-align: left;
-      font-size: 0.9em;
-      vertical-align: top;
+      font-size: 14px;
     }
-    .md-content th { background-color: var(--bg-tertiary); }
+    .md-content th { background-color: var(--bg-secondary); }
     .md-content blockquote {
       border-left: 3px solid var(--accent-color);
-      padding-left: 10px;
+      padding-left: 12px;
       color: var(--text-secondary);
-      margin: 8px 0;
+      margin: 12px 0;
     }
-    .md-content ul, .md-content ol { padding-left: 20px; margin: 8px 0; }
-    .md-content hr { border: none; border-top: 1px solid var(--border-color); margin: 12px 0; }
-    .md-content img { max-width: 100%; height: auto; border-radius: var(--radius-sm); }
-    .task-list-item { list-style-type: none; margin-left: -20px; }
+    .md-content ul, .md-content ol { padding-left: 24px; margin: 8px 0; }
+    .md-content hr { border: none; border-top: 1px solid var(--border-subtle); margin: 16px 0; }
 
-    /* Typing Cursor */
     .typing-cursor::after {
       content: '▋';
       display: inline-block;
       animation: blink 1s infinite;
       color: var(--accent-color);
+      margin-left: 2px;
     }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 
-    .model-card {
-      border: 1px solid var(--border-color);
+    .model-card, .prompt-card {
+      border: 1px solid var(--border-subtle);
       background: var(--bg-primary);
-      padding: 10px;
-      border-radius: var(--radius-sm);
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-    .model-card-header {
-      display: flex;
-      justify-content: space-between;
-      font-weight: bold;
-      gap: 8px;
-    }
-
-    /* Prompt Library Cards */
-    .prompt-card {
-      background: var(--bg-primary);
-      border: 1px solid var(--border-color);
-      padding: 10px;
+      padding: 12px;
       border-radius: var(--radius-sm);
       display: flex;
       flex-direction: column;
@@ -631,16 +649,14 @@
     }
 
     /* ==========================================================================
-       3. RESPONSIVE DESIGN (TABLETS & MOBILE OPTIMIZATIONS)
+       6. RESPONSIVE DESIGN (MOBILE & TABLETS)
        ========================================================================== */
     @media (max-width: 768px) {
       #sidebar {
         position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 0;
+        inset: 0 auto 0 0;
         transform: translateX(-100%);
-        box-shadow: 4px 0 15px rgba(0,0,0,0.5);
+        box-shadow: 4px 0 16px rgba(0,0,0,0.4);
       }
       #sidebar.open {
         transform: translateX(0);
@@ -648,43 +664,21 @@
       #sidebar.open ~ #sidebar-backdrop {
         display: block;
       }
-      .chat-item .actions {
-        display: flex;
-      }
-      .message-bubble {
-        max-width: 88%;
-      }
-      .message-row.assistant .message-bubble {
-        max-width: 100%;
-      }
-      .top-header {
-        padding: 4px 8px;
-      }
-      #stats-display {
-        display: none;
-      }
-      .modal-body {
-        padding: 12px;
-      }
-      .modal-footer {
-        flex-direction: column;
-      }
-      .modal-footer button {
-        width: 100%;
-      }
-      .input-container {
-        padding: 0 8px 8px 8px;
-      }
-      #messages-container {
-        padding: 12px 8px;
-      }
+      #stats-display { display: none; }
+      .message-row.user .message-bubble { max-width: 90%; }
+      #toast-container { right: 16px; left: 16px; bottom: 16px; }
+      .input-container { padding: 0 12px 12px 12px; }
+      #messages-container { padding: 16px 12px; }
     }
   </style>
 </head>
 <body>
 
-  <!-- Backdrop for Mobile Navigation -->
+  <!-- Backdrop for Mobile Drawer -->
   <div id="sidebar-backdrop"></div>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
 
   <!-- ==========================================================================
      SIDEBAR
@@ -692,8 +686,8 @@
   <aside id="sidebar">
     <div class="sidebar-header">
       <button class="btn-new-chat" id="btn-new-chat">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-        புதிய அரட்டை (New Chat)
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        புதிய அரட்டை
       </button>
     </div>
     <div class="sidebar-search">
@@ -701,8 +695,14 @@
     </div>
     <div class="chat-list" id="chat-list"></div>
     <div class="sidebar-footer">
-      <button class="btn-new-chat" id="btn-open-prompts" style="border:none;">📚 பிராம்ப்ட் லைப்ரரி</button>
-      <button class="btn-new-chat" id="btn-open-settings" style="border:none;">⚙️ அமைப்புகள் (Settings)</button>
+      <button class="sidebar-footer-btn" id="btn-open-prompts">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        பிராம்ப்ட் லைப்ரரி
+      </button>
+      <button class="sidebar-footer-btn" id="btn-open-settings">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        அமைப்புகள்
+      </button>
     </div>
   </aside>
 
@@ -711,20 +711,24 @@
      ========================================================================== -->
   <main id="main-content">
     <header class="top-header">
-      <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-        <button class="btn-icon" id="btn-toggle-sidebar" title="Toggle Sidebar">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <button class="btn-icon" id="btn-toggle-sidebar" aria-label="Toggle Sidebar" title="Toggle Sidebar">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18M3 6h18M3 18h18"/></svg>
         </button>
         <div class="model-selector-container">
           <select id="model-select" class="select-dropdown"></select>
-          <button class="btn-icon" id="btn-open-models" title="Model Details">ℹ️</button>
+          <button class="btn-icon" id="btn-open-models" style="width:24px; height:24px;" title="Model Details">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          </button>
         </div>
       </div>
-      <div style="display:flex; gap:4px; align-items:center; flex-shrink:0;">
-        <span id="stats-display" style="font-size:0.75em; color:var(--text-secondary);"></span>
-        <button class="btn-icon" id="btn-export-chat" title="Export Chat">📥</button>
+      <div style="display:flex; gap:4px; align-items:center;">
+        <span id="stats-display" style="font-size:12px; color:var(--text-secondary);"></span>
+        <button class="btn-icon" id="btn-export-chat" title="Export Chat">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <label class="btn-icon" title="Import Chat" style="cursor:pointer;">
-          📤
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <input type="file" id="import-chat-file" accept=".json" style="display:none;">
         </label>
       </div>
@@ -739,15 +743,23 @@
         <div class="input-toolbar">
           <div class="tool-btn-group">
             <label class="btn-icon" title="Attach File">
-              📁
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               <input type="file" id="file-input" multiple style="display:none;">
             </label>
-            <button class="btn-icon" id="btn-mic" title="Voice Input">🎙️</button>
-            <button class="btn-icon" id="btn-sys-prompt" title="System Prompt">⚙️</button>
+            <button class="btn-icon" id="btn-mic" title="Voice Input">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            </button>
+            <button class="btn-icon" id="btn-sys-prompt" title="System Prompt">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.38a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
-            <button class="btn-send" id="btn-stop" style="display:none; background:var(--danger-color);" title="Stop Generation">⏹</button>
-            <button class="btn-send" id="btn-send">➔</button>
+            <button class="btn-send" id="btn-stop" style="display:none; background:var(--danger-color);" title="Stop Generation">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+            </button>
+            <button class="btn-send" id="btn-send" aria-label="Send Message">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/></svg>
+            </button>
           </div>
         </div>
       </div>
@@ -761,10 +773,11 @@
   <div class="modal-overlay" id="modal-settings">
     <div class="modal">
       <div class="modal-header">
-        <span>அமைப்புகள் (Settings)</span>
+        <span>அமைப்புகள்</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
+        <div class="form-section-title">API Configurations</div>
         <div class="form-group">
           <label>Groq / OpenAI Base URL</label>
           <input type="text" id="setting-base-url" class="form-control" value="https://api.groq.com/openai/v1">
@@ -773,13 +786,15 @@
           <label>API Key</label>
           <div style="display:flex; gap:8px;">
             <input type="password" id="setting-api-key" class="form-control" style="flex:1;">
-            <button class="btn-new-chat" id="btn-toggle-key" style="flex:0 0 auto;">காட்டு/மறை</button>
+            <button class="btn-new-chat" id="btn-toggle-key" style="flex:0 0 auto; border-radius:var(--radius-sm);">காட்டு/மறை</button>
           </div>
           <div style="display:flex; gap:8px; margin-top:6px;">
-            <button class="btn-new-chat" id="btn-test-key">Test Key</button>
-            <button class="btn-new-chat" id="btn-clear-key" style="color:var(--danger-color);">Clear</button>
+            <button class="btn-new-chat" id="btn-test-key" style="border-radius:var(--radius-sm);">Test Key</button>
+            <button class="btn-new-chat" id="btn-clear-key" style="color:var(--danger-color); border-radius:var(--radius-sm);">Clear</button>
           </div>
         </div>
+
+        <div class="form-section-title">Appearance</div>
         <div class="form-group">
           <label>கருப்பொருள் (Theme)</label>
           <select id="setting-theme" class="form-control">
@@ -797,8 +812,8 @@
             <option value="amber">Warm Amber</option>
           </select>
         </div>
-        <hr style="border-color:var(--border-color)">
-        <h4>Model Hyperparameters</h4>
+
+        <div class="form-section-title">Model Hyperparameters</div>
         <div class="form-group">
           <label>Temperature (<span id="val-temp">0.7</span>)</label>
           <input type="range" id="param-temp" min="0" max="2" step="0.1" value="0.7">
@@ -809,8 +824,7 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button class="btn-new-chat" id="btn-save-settings">சேமி (Save)</button>
-        <button class="btn-new-chat" onclick="UIModule.closeModals()">முடிந்தது</button>
+        <button class="btn-new-chat" id="btn-save-settings" style="border-radius:var(--radius-sm);">சேமி</button>
       </div>
     </div>
   </div>
@@ -819,7 +833,7 @@
   <div class="modal-overlay" id="modal-models">
     <div class="modal">
       <div class="modal-header">
-        <span>கிடைக்கக்கூடிய Groq மாடல்கள்</span>
+        <span>Groq மாடல்கள்</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
@@ -846,7 +860,7 @@
         <textarea id="sys-prompt-text" class="form-control" rows="6" placeholder="You are a helpful AI assistant..."></textarea>
       </div>
       <div class="modal-footer">
-        <button class="btn-new-chat" id="btn-save-sysprompt">சேமி</button>
+        <button class="btn-new-chat" id="btn-save-sysprompt" style="border-radius:var(--radius-sm);">சேமி</button>
       </div>
     </div>
   </div>
@@ -855,33 +869,33 @@
   <div class="modal-overlay" id="modal-prompts">
     <div class="modal">
       <div class="modal-header">
-        <span>பிராம்ப்ட் லைப்ரரி (Prompt Library)</span>
+        <span>பிராம்ப்ட் லைப்ரரி</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
         <div class="form-group">
           <input type="text" id="prompt-search" class="form-control" placeholder="பிராம்ப்ட் தேடுக...">
         </div>
-        <div class="form-group" style="background:var(--bg-primary); padding:10px; border-radius:var(--radius-sm); border:1px solid var(--border-color);">
+        <div class="form-group" style="background:var(--bg-primary); padding:12px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
           <input type="hidden" id="prompt-edit-id">
-          <input type="text" id="new-prompt-title" class="form-control" placeholder="தலைப்பு (Title)" style="margin-bottom:6px;">
+          <input type="text" id="new-prompt-title" class="form-control" placeholder="தலைப்பு" style="margin-bottom:6px;">
           <input type="text" id="new-prompt-category" class="form-control" placeholder="வகை (Category / Tag)" style="margin-bottom:6px;">
           <textarea id="new-prompt-cmd" class="form-control" placeholder="பிராம்ப்ட் உரை..." rows="3" style="margin-bottom:6px;"></textarea>
           <div style="display:flex; gap:8px;">
-            <button class="btn-new-chat" id="btn-add-prompt">சேர் / புதுப்பி (Save)</button>
-            <button class="btn-new-chat" id="btn-cancel-prompt-edit" style="display:none;">ரத்து</button>
+            <button class="btn-new-chat" id="btn-add-prompt" style="border-radius:var(--radius-sm);">சேர் / புதுப்பி</button>
+            <button class="btn-new-chat" id="btn-cancel-prompt-edit" style="display:none; border-radius:var(--radius-sm);">ரத்து</button>
           </div>
         </div>
         <div style="display:flex; justify-content:space-between; align-items:center;">
           <div style="display:flex; gap:6px;">
-            <button class="btn-new-chat" id="btn-export-prompts" style="padding:4px 8px; font-size:0.8em;">Export</button>
-            <label class="btn-new-chat" style="padding:4px 8px; font-size:0.8em; cursor:pointer;">
+            <button class="btn-new-chat" id="btn-export-prompts" style="padding:4px 8px; font-size:12px; border-radius:var(--radius-sm);">Export</button>
+            <label class="btn-new-chat" style="padding:4px 8px; font-size:12px; border-radius:var(--radius-sm); cursor:pointer;">
               Import
               <input type="file" id="import-prompts-file" accept=".json" style="display:none;">
             </label>
           </div>
         </div>
-        <hr style="border-color:var(--border-color)">
+        <hr style="border-color:var(--border-subtle)">
         <div id="prompt-list" style="display:flex; flex-direction:column; gap:8px;"></div>
       </div>
     </div>
@@ -891,15 +905,14 @@
   <div class="modal-overlay" id="modal-edit-msg">
     <div class="modal">
       <div class="modal-header">
-        <span>செய்தியைத் திருத்து (Edit Message)</span>
+        <span>செய்தியைத் திருத்து</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
         <textarea id="edit-msg-text" class="form-control" rows="5"></textarea>
       </div>
       <div class="modal-footer">
-        <button class="btn-new-chat" id="btn-save-edit-msg">சேமி & அனுப்பு</button>
-        <button class="btn-new-chat" onclick="UIModule.closeModals()">ரத்து</button>
+        <button class="btn-new-chat" id="btn-save-edit-msg" style="border-radius:var(--radius-sm);">சேமி & அனுப்பு</button>
       </div>
     </div>
   </div>
@@ -908,24 +921,24 @@
   <div class="modal-overlay" id="modal-edit-title">
     <div class="modal">
       <div class="modal-header">
-        <span>தலைப்பை மாற்று (Rename Chat)</span>
+        <span>தலைப்பை மாற்று</span>
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
         <input type="text" id="edit-chat-title-input" class="form-control">
       </div>
       <div class="modal-footer">
-        <button class="btn-new-chat" id="btn-save-chat-title">சேமி</button>
+        <button class="btn-new-chat" id="btn-save-chat-title" style="border-radius:var(--radius-sm);">சேமி</button>
       </div>
     </div>
   </div>
 
   <!-- ==========================================================================
-     JAVASCRIPT ARCHITECTURE
+     JAVASCRIPT ARCHITECTURE (PRESERVED & ENHANCED)
      ========================================================================== -->
   <script>
     /* --------------------------------------------------------------------------
-       1. CONFIG & STORAGE MODULE
+       1. STORAGE MODULE
        -------------------------------------------------------------------------- */
     const StorageModule = (() => {
       const KEYS = {
@@ -1006,6 +1019,18 @@
           const sizes = ['Bytes', 'KB', 'MB', 'GB'];
           const i = Math.floor(Math.log(bytes) / Math.log(k));
           return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        },
+        showToast: (msg) => {
+          const container = document.getElementById('toast-container');
+          const toast = document.createElement('div');
+          toast.className = 'toast';
+          toast.innerText = msg;
+          container.appendChild(toast);
+          setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transition = 'opacity 0.2s';
+            setTimeout(() => toast.remove(), 200);
+          }, 2500);
         }
       };
     })();
@@ -1018,10 +1043,9 @@
         render: (text) => {
           if(!text) return '';
           
-          // Unescape <br> tags if returned explicitly by AI
           let raw = UtilityModule.escapeHTML(text).replace(/&lt;br\s*&gt;/gi, '<br>');
 
-          // Code blocks with clean markup for event delegation
+          // Code blocks
           raw = raw.replace(/```(\w*)\r?\n([\s\S]*?)```/g, (match, lang, code) => {
             const language = lang || 'code';
             return `<pre><div class="code-block-header"><span>${language}</span><button class="btn-copy-code" type="button">Copy Code</button></div><code>${code}</code></pre>`;
@@ -1050,14 +1074,13 @@
           raw = raw.replace(/^&gt;\s+(.*)$/gm, '<blockquote>$1</blockquote>');
 
           // Task lists
-          raw = raw.replace(/^\[ \]\s+(.*)$/gm, '<li class="task-list-item"><input type="checkbox" disabled> $1</li>');
-          raw = raw.replace(/^\[x\]\s+(.*)$/gm, '<li class="task-list-item"><input type="checkbox" checked disabled> $1</li>');
+          raw = raw.replace(/^\[ \]\s+(.*)$/gm, '<li style="list-style-type:none"><input type="checkbox" disabled> $1</li>');
+          raw = raw.replace(/^\[x\]\s+(.*)$/gm, '<li style="list-style-type:none"><input type="checkbox" checked disabled> $1</li>');
 
-          // Unordered Lists
+          // Lists
           raw = raw.replace(/^\s*[-*]\s+(.*)$/gm, '<ul><li>$1</li></ul>');
           raw = raw.replace(/<\/ul>\s*<ul>/g, '');
 
-          // Ordered Lists
           raw = raw.replace(/^\s*\d+\.\s+(.*)$/gm, '<ol><li>$1</li></ol>');
           raw = raw.replace(/<\/ol>\s*<ol>/g, '');
 
@@ -1068,17 +1091,16 @@
           raw = raw.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1">');
           raw = raw.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
 
-          // Tables with Horizontal Wrapper for Mobile
+          // Tables
           raw = raw.replace(/^\|(.+)\|$/gm, (match, content) => {
             const cells = content.split('|').map(c => c.trim());
             if (cells.every(c => c.match(/^:?-+:?/))) return '';
-            const tag = 'td';
-            return '<tr>' + cells.map(c => `<${tag}>${c}</${tag}>`).join('') + '</tr>';
+            return '<tr>' + cells.map(c => `<td>${c}</td>`).join('') + '</tr>';
           });
           raw = raw.replace(/(<tr>.*?<\/tr>)/gs, '<div class="table-wrapper"><table>$1</table></div>');
           raw = raw.replace(/<\/div>\s*<div class="table-wrapper">/g, '');
 
-          // New lines to br
+          // Newlines
           const parts = raw.split(/(<pre>[\s\S]*?<\/pre>|<div class="table-wrapper">[\s\S]*?<\/div>)/g);
           for(let i=0; i<parts.length; i++) {
             if(!parts[i].startsWith('<pre>') && !parts[i].startsWith('<div class="table-wrapper">')) {
@@ -1123,7 +1145,7 @@
           if (!baseUrl) baseUrl = 'https://api.groq.com/openai/v1';
           baseUrl = baseUrl.replace(/\/+$/, '');
 
-          if(!key) throw new Error("API Key கொடுக்கப்படவில்லை. அமைப்புகளில் API Key-ஐ சேர்க்கவும்.");
+          if(!key) throw new Error("API Key கொடுக்கப்படவில்லை.");
 
           const res = await fetchWithTimeoutAndRetry(`${baseUrl}/models`, {
             headers: { 'Authorization': `Bearer ${key}` }
@@ -1148,9 +1170,7 @@
             temperature: parseFloat(params.temperature) || 0.7
           };
 
-          if (params.maxTokens) {
-            payload.max_tokens = parseInt(params.maxTokens);
-          }
+          if (params.maxTokens) payload.max_tokens = parseInt(params.maxTokens);
 
           const res = await fetch(`${baseUrl}/chat/completions`, {
             method: 'POST',
@@ -1188,9 +1208,7 @@
                   const parsed = JSON.parse(dataStr);
                   const content = parsed.choices[0]?.delta?.content || "";
                   if (content) onChunk(content);
-                } catch (e) {
-                  // Ignore parse errors for partial chunks
-                }
+                } catch (e) {}
               }
             }
           }
@@ -1240,9 +1258,7 @@
           activeChatId = id;
           StorageModule.setActiveChatId(id);
           UIModule.render();
-          if (window.innerWidth <= 768) {
-            UIModule.closeSidebar();
-          }
+          if (window.innerWidth <= 768) UIModule.closeSidebar();
         },
         createChat: () => {
           const newChat = {
@@ -1259,9 +1275,7 @@
           StorageModule.saveChats(chats);
           StorageModule.setActiveChatId(activeChatId);
           UIModule.render();
-          if (window.innerWidth <= 768) {
-            UIModule.closeSidebar();
-          }
+          if (window.innerWidth <= 768) UIModule.closeSidebar();
         },
         deleteChat: (id) => {
           chats = chats.filter(c => c.id !== id);
@@ -1389,7 +1403,7 @@
             }
           } finally {
             const duration = ((Date.now() - startTime)/1000).toFixed(2);
-            UIModule.showStats(`Time: ${duration}s`);
+            UIModule.showStats(`${duration}s`);
             UIModule.toggleStopButton(false);
             StorageModule.saveChats(chats);
             abortController = null;
@@ -1519,12 +1533,8 @@
 
       function setupEventListeners() {
         els.btnNewChat.addEventListener('click', () => ChatModule.createChat());
-        els.btnToggleSidebar.addEventListener('click', () => {
-          els.sidebar.classList.toggle('open');
-        });
-        els.sidebarBackdrop.addEventListener('click', () => {
-          els.sidebar.classList.remove('open');
-        });
+        els.btnToggleSidebar.addEventListener('click', () => els.sidebar.classList.toggle('open'));
+        els.sidebarBackdrop.addEventListener('click', () => els.sidebar.classList.remove('open'));
 
         els.btnSend.addEventListener('click', () => handleSend());
         els.chatInput.addEventListener('keydown', (e) => {
@@ -1536,7 +1546,7 @@
 
         els.chatInput.addEventListener('input', () => {
           els.chatInput.style.height = 'auto';
-          els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
+          els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 160) + 'px';
         });
 
         els.btnStop.addEventListener('click', () => ChatModule.stopGeneration());
@@ -1579,6 +1589,7 @@
           applyTheme();
           UIModule.closeModals();
           initModels();
+          UtilityModule.showToast('அமைப்புகள் சேமிக்கப்பட்டன');
         });
 
         document.getElementById('btn-toggle-key').addEventListener('click', () => {
@@ -1590,16 +1601,16 @@
           StorageModule.setBaseUrl(StorageModule.getBaseUrl().trim());
           try {
             await initModels();
-            alert('Groq API Key வெற்றிகரமாக உறுதிசெய்யப்பட்டது!');
+            UtilityModule.showToast('API Key வெற்றி!');
           } catch(e) {
-            alert('இணைப்புத் தோல்வி: ' + e.message);
+            UtilityModule.showToast('இணைப்புத் தோல்வி: ' + e.message);
           }
         });
 
         document.getElementById('btn-clear-key').addEventListener('click', () => {
           StorageModule.clearApiKey();
           els.settingApiKey.value = '';
-          alert('API Key நீக்கப்பட்டது.');
+          UtilityModule.showToast('API Key நீக்கப்பட்டது');
         });
 
         els.settingTheme.addEventListener('change', (e) => {
@@ -1626,13 +1637,8 @@
           document.getElementById('modal-models').classList.add('active');
         });
 
-        document.getElementById('model-search').addEventListener('input', () => {
-          UIModule.renderModelsModal();
-        });
-
-        document.getElementById('model-sort').addEventListener('change', () => {
-          UIModule.renderModelsModal();
-        });
+        document.getElementById('model-search').addEventListener('input', () => UIModule.renderModelsModal());
+        document.getElementById('model-sort').addEventListener('change', () => UIModule.renderModelsModal());
 
         document.getElementById('btn-sys-prompt').addEventListener('click', () => {
           const chat = ChatModule.getActiveChat();
@@ -1645,6 +1651,7 @@
           if (chat) {
             chat.systemPrompt = document.getElementById('sys-prompt-text').value.trim();
             StorageModule.saveChats(ChatModule.getChats());
+            UtilityModule.showToast('System Prompt சேமிக்கப்பட்டது');
           }
           UIModule.closeModals();
         });
@@ -1668,6 +1675,7 @@
             document.getElementById('new-prompt-cmd').value = '';
             document.getElementById('prompt-edit-id').value = '';
             document.getElementById('btn-cancel-prompt-edit').style.display = 'none';
+            UtilityModule.showToast('பிராம்ப்ட் சேமிக்கப்பட்டது');
           }
         });
 
@@ -1679,9 +1687,7 @@
           document.getElementById('btn-cancel-prompt-edit').style.display = 'none';
         });
 
-        document.getElementById('prompt-search').addEventListener('input', () => {
-          UIModule.renderPrompts();
-        });
+        document.getElementById('prompt-search').addEventListener('input', () => UIModule.renderPrompts());
 
         document.getElementById('btn-export-prompts').addEventListener('click', () => {
           const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(PromptModule.getPrompts(), null, 2));
@@ -1701,9 +1707,9 @@
             try {
               const imported = JSON.parse(evt.target.result);
               PromptModule.importPrompts(imported);
-              alert('Prompts imported successfully!');
+              UtilityModule.showToast('Prompts வெற்றியடைந்தது');
             } catch(err) {
-              alert('Invalid Prompt File format');
+              UtilityModule.showToast('பிழை: Invalid Format');
             }
           };
           reader.readAsText(file);
@@ -1731,9 +1737,7 @@
           btnMic.style.display = 'none';
         }
 
-        els.fileInput.addEventListener('change', (e) => {
-          handleFiles(e.target.files);
-        });
+        els.fileInput.addEventListener('change', (e) => handleFiles(e.target.files));
 
         ['dragenter', 'dragover'].forEach(eventName => {
           els.dropZone.addEventListener(eventName, (e) => {
@@ -1779,12 +1783,12 @@
                 chats.unshift(importedChat);
                 ChatModule.setChats(chats);
                 ChatModule.setActiveChat(importedChat.id);
-                alert('Chat imported successfully!');
+                UtilityModule.showToast('Chat இறக்குமதி செய்யப்பட்டது');
               } else {
-                alert('Invalid chat file format.');
+                UtilityModule.showToast('Invalid Chat Format');
               }
             } catch(err) {
-              alert('Error importing chat: ' + err.message);
+              UtilityModule.showToast('Error: ' + err.message);
             }
           };
           reader.readAsText(file);
@@ -1806,7 +1810,6 @@
           }
         });
 
-        // 100% Reliable Global Event Delegate Listener for Code Copy Buttons
         document.addEventListener('click', (e) => {
           const btn = e.target.closest('.btn-copy-code');
           if (btn) {
@@ -1910,7 +1913,7 @@
           files.forEach((f, idx) => {
             const chip = document.createElement('div');
             chip.className = 'attachment-chip';
-            chip.innerHTML = `<span>📄 ${UtilityModule.escapeHTML(f.name)} (${UtilityModule.formatBytes(f.size)})</span>
+            chip.innerHTML = `<span>📄 ${UtilityModule.escapeHTML(f.name)}</span>
                               <span class="remove-file" onclick="ChatModule.removePendingFile(${idx})">✕</span>`;
             previewContainer.appendChild(chip);
           });
@@ -1982,7 +1985,9 @@
 
             const displayContent = msg.displayContent || msg.content;
 
-            row.innerHTML = `<div class="avatar">${isUser ? 'U' : 'AI'}</div>
+            row.innerHTML = `<div class="avatar">
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm0 18a8 8 0 1 1 8-8 8 8 0 0 1-8 8z"/></svg>
+                             </div>
                              <div class="message-bubble">
                                ${filesHtml}
                                <div class="md-content">${MarkdownModule.render(displayContent)}</div>
@@ -2048,11 +2053,11 @@
           models.forEach(m => {
             const card = document.createElement('div');
             card.className = 'model-card';
-            card.innerHTML = `<div class="model-card-header">
+            card.innerHTML = `<div style="display:flex; justify-content:space-between; font-weight:600;">
                                 <span style="word-break:break-all;">${UtilityModule.escapeHTML(m.id)}</span>
-                                <span style="font-size:0.8em; color:var(--text-secondary);">${m.owned_by || 'Groq'}</span>
+                                <span style="font-size:12px; color:var(--text-secondary);">${m.owned_by || 'Groq'}</span>
                               </div>
-                              <div style="font-size:0.85em; color:var(--text-secondary);">
+                              <div style="font-size:12px; color:var(--text-secondary);">
                                 Context Window: ${m.context_window ? m.context_window.toLocaleString() : 'N/A'} tokens
                               </div>`;
             list.appendChild(card);
@@ -2074,14 +2079,14 @@
             card.className = 'prompt-card';
             card.innerHTML = `<div style="display:flex; justify-content:space-between; align-items:center;">
                                 <strong>${p.favorite ? '⭐ ' : ''}${UtilityModule.escapeHTML(p.title)}</strong>
-                                <span style="font-size:0.75em; background:var(--bg-tertiary); padding:2px 6px; border-radius:4px;">${UtilityModule.escapeHTML(p.category)}</span>
+                                <span style="font-size:11px; background:var(--bg-tertiary); padding:2px 6px; border-radius:4px;">${UtilityModule.escapeHTML(p.category)}</span>
                               </div>
-                              <div style="font-size:0.85em; color:var(--text-secondary); white-space:pre-wrap; word-break:break-word;">${UtilityModule.escapeHTML(p.command)}</div>
-                              <div style="display:flex; gap:6px; justify-content:flex-end; margin-top:4px; flex-wrap:wrap;">
-                                <button class="btn-new-chat" style="padding:2px 8px; font-size:0.8em;" onclick="UIModule.usePrompt('${UtilityModule.escapeHTML(p.command).replace(/'/g, "\\'")}')">பயன்படுத்து</button>
-                                <button class="btn-new-chat" style="padding:2px 8px; font-size:0.8em;" onclick="PromptModule.toggleFavorite('${p.id}')">Fav</button>
-                                <button class="btn-new-chat" style="padding:2px 8px; font-size:0.8em;" onclick="UIModule.editPrompt('${p.id}')">Edit</button>
-                                <button class="btn-new-chat" style="padding:2px 8px; font-size:0.8em; color:var(--danger-color);" onclick="PromptModule.deletePrompt('${p.id}')">Delete</button>
+                              <div style="font-size:13px; color:var(--text-secondary); white-space:pre-wrap;">${UtilityModule.escapeHTML(p.command)}</div>
+                              <div style="display:flex; gap:6px; justify-content:flex-end; margin-top:4px;">
+                                <button class="btn-new-chat" style="padding:2px 8px; font-size:12px;" onclick="UIModule.usePrompt('${UtilityModule.escapeHTML(p.command).replace(/'/g, "\\'")}')">பயன்படுத்து</button>
+                                <button class="btn-new-chat" style="padding:2px 8px; font-size:12px;" onclick="PromptModule.toggleFavorite('${p.id}')">Fav</button>
+                                <button class="btn-new-chat" style="padding:2px 8px; font-size:12px;" onclick="UIModule.editPrompt('${p.id}')">Edit</button>
+                                <button class="btn-new-chat" style="padding:2px 8px; font-size:12px; color:var(--danger-color);" onclick="PromptModule.deletePrompt('${p.id}')">Delete</button>
                               </div>`;
             list.appendChild(card);
           });
@@ -2113,37 +2118,20 @@
             textArea.style.position = 'fixed';
             textArea.style.top = '0';
             textArea.style.left = '0';
-            textArea.style.width = '2em';
-            textArea.style.height = '2em';
-            textArea.style.padding = '0';
-            textArea.style.border = 'none';
-            textArea.style.outline = 'none';
-            textArea.style.boxShadow = 'none';
-            textArea.style.background = 'transparent';
             document.body.appendChild(textArea);
             textArea.focus();
             textArea.select();
             try {
-              const successful = document.execCommand('copy');
-              if (successful) {
-                this.handleCopySuccess(buttonEl);
-              } else {
-                throw new Error('execCommand copy failed');
-              }
-            } catch (err) {
-              console.error('Fallback copy error:', err);
-              alert('Copy failed: ' + err.message);
-            }
+              document.execCommand('copy');
+              this.handleCopySuccess(buttonEl);
+            } catch (err) {}
             document.body.removeChild(textArea);
           };
 
           if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(text).then(() => {
               this.handleCopySuccess(buttonEl);
-            }).catch((err) => {
-              console.warn('Clipboard API failed, trying fallback:', err);
-              fallbackCopy(text);
-            });
+            }).catch(() => fallbackCopy(text));
           } else {
             fallbackCopy(text);
           }
@@ -2153,7 +2141,7 @@
           if (!buttonEl) return;
           const originalText = buttonEl.innerText;
           buttonEl.innerText = 'Copied ✓';
-          buttonEl.style.color = 'var(--success-color, #81c995)';
+          buttonEl.style.color = 'var(--success-color)';
           setTimeout(() => {
             buttonEl.innerText = originalText;
             buttonEl.style.color = '';
@@ -2185,7 +2173,7 @@
     })();
 
     /* --------------------------------------------------------------------------
-       8. INITIALIZATION & ENTRY POINT
+       8. INITIALIZATION
        -------------------------------------------------------------------------- */
     async function initModels() {
       try {
@@ -2209,4 +2197,3 @@
   </script>
 </body>
 </html>
-
