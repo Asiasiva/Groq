@@ -866,10 +866,6 @@
       </div>
       <div class="modal-body">
         <div class="form-group">
-          <label>API Provider</label>
-          <select id="setting-provider-select" class="form-control"></select>
-        </div>
-        <div class="form-group">
           <label>Base URL Preset Dropdown</label>
           <div style="display:flex; gap:6px;">
             <select id="preset-url-select" class="form-control" style="flex:1;"></select>
@@ -1228,10 +1224,31 @@
             setTimeout(() => toast.remove(), 200);
           }, 2500);
         },
-        maskApiKey: (key) => {
-          if (!key) return '';
-          if (key.length <= 10) return '••••••••';
-          return `${key.slice(0, 6)}...${key.slice(-4)}`;
+        copyToClipboard: (text) => {
+          if (!text) return Promise.reject();
+          if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+          } else {
+            return new Promise((resolve, reject) => {
+              const textArea = document.createElement('textarea');
+              textArea.value = text;
+              textArea.style.position = 'fixed';
+              textArea.style.top = '0';
+              textArea.style.left = '0';
+              document.body.appendChild(textArea);
+              textArea.focus();
+              textArea.select();
+              try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textArea);
+                if (successful) resolve();
+                else reject();
+              } catch (err) {
+                document.body.removeChild(textArea);
+                reject(err);
+              }
+            });
+          }
         }
       };
     })();
@@ -1418,12 +1435,13 @@
           const safeContextLimit = Math.floor(contextWindow * 0.95);
           const remainingContext = Math.max(256, safeContextLimit - totalInputTokens);
 
-          let calculatedMaxTokens = Math.min(maxOutput, remainingContext);
+          // Hard cap at 8192 (and strict 65536) to prevent provider limit overflow errors
+          let calculatedMaxTokens = Math.min(maxOutput, remainingContext, 8192);
 
           // Respect user explicit max tokens setting if defined
           if (params.maxTokens && parseInt(params.maxTokens) > 0) {
             const userTokens = parseInt(params.maxTokens);
-            calculatedMaxTokens = Math.min(userTokens, remainingContext);
+            calculatedMaxTokens = Math.min(userTokens, remainingContext, 65536);
           }
 
           calculatedMaxTokens = Math.max(64, Math.floor(calculatedMaxTokens));
@@ -1894,8 +1912,8 @@
           const deltaX = touchEndX - touchStartX;
           const deltaY = touchEndY - touchStartY;
 
-          // Highly responsive touch gesture trigger across any screen position
-          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 20) {
+          // Highly responsive touch gesture trigger across any screen position with 15px threshold
+          if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
             const isSidebarOpen = els.sidebar.classList.contains('open');
 
             // Light horizontal swipe right opens sidebar from anywhere on screen
@@ -1965,17 +1983,19 @@
           if (window.innerWidth <= 768) closeSidebar();
         });
 
-        els.settingProviderSelect.addEventListener('change', async (e) => {
-          const newProfileId = e.target.value;
-          StorageModule.setActiveProfileId(newProfileId);
-          const activeProfile = StorageModule.getActiveProfile();
-          els.settingApiKey.value = activeProfile.key || '';
-          els.settingBaseUrl.value = activeProfile.url || '';
-          UIModule.renderUrlPresets();
-          UIModule.renderKeyPresets();
-          await initModels();
-          UtilityModule.showToast(`Provider: ${activeProfile.name}`);
-        });
+        if (els.settingProviderSelect) {
+          els.settingProviderSelect.addEventListener('change', async (e) => {
+            const newProfileId = e.target.value;
+            StorageModule.setActiveProfileId(newProfileId);
+            const activeProfile = StorageModule.getActiveProfile();
+            els.settingApiKey.value = activeProfile.key || '';
+            els.settingBaseUrl.value = activeProfile.url || '';
+            UIModule.renderUrlPresets();
+            UIModule.renderKeyPresets();
+            await initModels();
+            UtilityModule.showToast(`Provider: ${activeProfile.name}`);
+          });
+        }
 
         els.presetUrlSelect.addEventListener('change', (e) => {
           if (e.target.value) {
@@ -2011,7 +2031,7 @@
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
         });
 
-        // API Key Preset Handlers (Fills unmasked raw key directly into API Key input box & active profile)
+        // API Key Preset Handlers (Fills unmasked raw key directly into API Key input box & updates active profile)
         els.presetKeySelect.addEventListener('change', async (e) => {
           const selectedId = e.target.value;
           if (!selectedId) return;
@@ -2029,10 +2049,16 @@
             if (target.key) {
               StorageModule.setApiKey(target.key);
               els.settingApiKey.value = target.key;
+              UtilityModule.copyToClipboard(target.key).then(() => {
+                UtilityModule.showToast(`Key Loaded & Copied: ${target.name}`);
+              }).catch(() => {
+                UtilityModule.showToast(`Key Loaded: ${target.name}`);
+              });
+            } else {
+              UtilityModule.showToast(`Key Loaded: ${target.name}`);
             }
             UIModule.renderUrlPresets();
             await initModels();
-            UtilityModule.showToast(`Key Loaded: ${target.name}`);
           }
         });
 
@@ -2432,6 +2458,7 @@
         },
 
         renderProvidersSelect() {
+          if (!els.settingProviderSelect) return;
           const profiles = StorageModule.getProfiles();
           const activeId = StorageModule.getActiveProfileId();
           els.settingProviderSelect.innerHTML = '';
@@ -2474,8 +2501,7 @@
           presets.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            const masked = UtilityModule.maskApiKey(p.key);
-            opt.innerText = `${p.name} (${masked})`;
+            opt.innerText = `${p.name} (${p.key})`;
             if (p.key === currentApiKey) opt.selected = true;
             els.presetKeySelect.appendChild(opt);
           });
@@ -2701,30 +2727,9 @@
 
         copyToClipboard(text, buttonEl) {
           if (!text) return;
-
-          const fallbackCopy = (txt) => {
-            const textArea = document.createElement('textarea');
-            textArea.value = txt;
-            textArea.style.position = 'fixed';
-            textArea.style.top = '0';
-            textArea.style.left = '0';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-              document.execCommand('copy');
-              this.handleCopySuccess(buttonEl);
-            } catch (err) {}
-            document.body.removeChild(textArea);
-          };
-
-          if (navigator.clipboard && window.isSecureContext) {
-            navigator.clipboard.writeText(text).then(() => {
-              this.handleCopySuccess(buttonEl);
-            }).catch(() => fallbackCopy(text));
-          } else {
-            fallbackCopy(text);
-          }
+          UtilityModule.copyToClipboard(text).then(() => {
+            this.handleCopySuccess(buttonEl);
+          }).catch(() => {});
         },
 
         handleCopySuccess(buttonEl) {
