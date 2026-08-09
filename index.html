@@ -54,7 +54,7 @@
     [data-accent="purple"] { --accent-color: #c084fc; --accent-hover: #a855f7; }
     [data-accent="amber"] { --accent-color: #fbbf24; --accent-hover: #f59e0b; }
 
-    * {
+    *, *::before, *::after {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
@@ -504,7 +504,7 @@
     .btn-send:disabled { opacity: 0.35; cursor: not-allowed; }
 
     /* ==========================================================================
-       3. MODALS & DIALOGS
+       3. MODALS & DIALOGS (FIXED OVERFLOW FOR MOBILE)
        ========================================================================== */
     .modal-overlay {
       position: fixed;
@@ -517,6 +517,7 @@
       backdrop-filter: blur(4px);
       -webkit-backdrop-filter: blur(4px);
       padding: 12px;
+      box-sizing: border-box;
     }
     .modal-overlay.active { display: flex; }
 
@@ -524,7 +525,7 @@
       background: var(--bg-secondary);
       border: 1px solid var(--border-color);
       width: 480px;
-      max-width: calc(100% - 24px);
+      max-width: calc(100vw - 24px);
       max-height: 85vh;
       max-height: 85dvh;
       border-radius: 18px;
@@ -532,6 +533,7 @@
       flex-direction: column;
       overflow: hidden;
       box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+      box-sizing: border-box;
     }
 
     .modal-header {
@@ -542,14 +544,19 @@
       align-items: center;
       font-weight: 600;
       font-size: 15px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .modal-body {
       padding: 18px;
       overflow-y: auto;
+      overflow-x: hidden;
       display: flex;
       flex-direction: column;
       gap: 14px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .modal-footer {
@@ -558,11 +565,23 @@
       display: flex;
       justify-content: flex-end;
       gap: 8px;
+      width: 100%;
+      box-sizing: border-box;
     }
 
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group { 
+      display: flex; 
+      flex-direction: column; 
+      gap: 6px; 
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+    }
     .form-group label { font-size: 13px; color: var(--text-secondary); }
     .form-control {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
       background: var(--bg-primary);
       border: 1px solid var(--border-color);
       color: var(--text-primary);
@@ -571,6 +590,8 @@
       outline: none;
       font-family: inherit;
       font-size: 14px;
+      box-sizing: border-box;
+      text-overflow: ellipsis;
     }
     .form-control:focus { border-color: var(--accent-color); }
 
@@ -867,8 +888,8 @@
       <div class="modal-body">
         <div class="form-group">
           <label>Base URL Preset Dropdown</label>
-          <div style="display:flex; gap:6px;">
-            <select id="preset-url-select" class="form-control" style="flex:1;"></select>
+          <div style="display:flex; gap:6px; width:100%;">
+            <select id="preset-url-select" class="form-control" style="flex:1; min-width:0;"></select>
             <button class="btn-new-chat" id="btn-add-url-preset" style="flex:0 0 auto; padding:0 10px; border-radius:var(--radius-sm);" title="தற்போதைய URL-ஐ பிரீசெட்டாகச் சேர்">+</button>
             <button class="btn-new-chat" id="btn-del-url-preset" style="flex:0 0 auto; padding:0 10px; color:var(--danger-color); border-radius:var(--radius-sm);" title="தேர்ந்தெடுக்கப்பட்ட பிரீசெட்டை நீக்கு">✕</button>
           </div>
@@ -880,8 +901,8 @@
         <hr style="border-color:var(--border-subtle)">
         <div class="form-group">
           <label>API Key Manager Dropdown</label>
-          <div style="display:flex; gap:6px;">
-            <select id="preset-key-select" class="form-control" style="flex:1;"></select>
+          <div style="display:flex; gap:6px; width:100%;">
+            <select id="preset-key-select" class="form-control" style="flex:1; min-width:0;"></select>
             <button class="btn-new-chat" id="btn-add-key-preset" style="flex:0 0 auto; padding:0 10px; border-radius:var(--radius-sm);" title="புதிய API Key சேர்">+</button>
             <button class="btn-new-chat" id="btn-edit-key-preset" style="flex:0 0 auto; padding:0 10px; border-radius:var(--radius-sm);" title="தேர்ந்தெடுக்கப்பட்ட Key பெயர திருத்து">✏️</button>
             <button class="btn-new-chat" id="btn-del-key-preset" style="flex:0 0 auto; padding:0 10px; color:var(--danger-color); border-radius:var(--radius-sm);" title="தேர்ந்தெடுக்கப்பட்ட Key நீக்கு">✕</button>
@@ -889,13 +910,13 @@
         </div>
         <div class="form-group">
           <label>API Key</label>
-          <div style="display:flex; gap:8px;">
-            <input type="password" id="setting-api-key" class="form-control" style="flex:1;">
-            <button class="btn-new-chat" id="btn-toggle-key" style="flex:0 0 auto; border-radius:var(--radius-sm);">காட்டு/மறை</button>
+          <div style="display:flex; gap:8px; width:100%;">
+            <input type="password" id="setting-api-key" class="form-control" style="flex:1; min-width:0;">
+            <button class="btn-new-chat" id="btn-toggle-key" style="flex:0 0 auto; border-radius:var(--radius-sm); font-size:12px; padding:0 8px;">காட்டு/மறை</button>
           </div>
-          <div style="display:flex; gap:8px; margin-top:6px;">
-            <button class="btn-new-chat" id="btn-test-key" style="border-radius:var(--radius-sm);">Test Key</button>
-            <button class="btn-new-chat" id="btn-clear-key" style="color:var(--danger-color); border-radius:var(--radius-sm);">Clear</button>
+          <div style="display:flex; gap:8px; margin-top:6px; width:100%;">
+            <button class="btn-new-chat" id="btn-test-key" style="flex:1; border-radius:var(--radius-sm);">Test Key</button>
+            <button class="btn-new-chat" id="btn-clear-key" style="flex:1; color:var(--danger-color); border-radius:var(--radius-sm);">Clear</button>
           </div>
         </div>
         <div class="form-group">
@@ -939,7 +960,7 @@
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; width:100%;">
           <input type="text" id="model-search" class="form-control" placeholder="Search models..." style="flex:1; min-width:140px;">
           <select id="model-sort" class="form-control" style="width:130px;">
             <option value="name">Sort Name</option>
@@ -1141,7 +1162,6 @@
           const activeUrl = StorageModule.getBaseUrl();
           const activeProfileId = StorageModule.getActiveProfileId();
 
-          // Normalize backward compatible structure
           return raw.map((item, index) => {
             if (typeof item === 'string') {
               return {
@@ -1331,7 +1351,7 @@
     })();
 
     /* --------------------------------------------------------------------------
-       4. API MODULE (WITH ROBUST CANCELLATION & TOKEN ESTIMATION)
+       4. API MODULE
        -------------------------------------------------------------------------- */
     const APIModule = (() => {
       const fetchWithTimeoutAndRetry = async (url, options, retries = 2, timeoutMs = 15000) => {
@@ -1426,7 +1446,6 @@
           const activeProfile = StorageModule.getActiveProfile();
           const { contextWindow, maxOutput } = getModelTokenLimit(model, ChatModule.getModels());
 
-          // Input tokens calculation with conservative safety margin
           let totalInputTokens = 0;
           messages.forEach(m => {
             totalInputTokens += estimateTokens(m.content || '');
@@ -1435,10 +1454,8 @@
           const safeContextLimit = Math.floor(contextWindow * 0.95);
           const remainingContext = Math.max(256, safeContextLimit - totalInputTokens);
 
-          // Hard cap at 8192 (and strict 65536) to prevent provider limit overflow errors
           let calculatedMaxTokens = Math.min(maxOutput, remainingContext, 8192);
 
-          // Respect user explicit max tokens setting if defined
           if (params.maxTokens && parseInt(params.maxTokens) > 0) {
             const userTokens = parseInt(params.maxTokens);
             calculatedMaxTokens = Math.min(userTokens, remainingContext, 65536);
@@ -1453,7 +1470,6 @@
             temperature: parseFloat(params.temperature) || 0.7
           };
 
-          // Use max_completion_tokens or max_tokens appropriately
           if (activeProfile.id === 'openai' && (model.includes('o1') || model.includes('o3'))) {
             payload.max_completion_tokens = calculatedMaxTokens;
           } else {
@@ -1521,7 +1537,7 @@
     })();
 
     /* --------------------------------------------------------------------------
-       5. CHAT & MODEL STATE MANAGER (ROBUST STOP GENERATION)
+       5. CHAT & MODEL STATE MANAGER
        -------------------------------------------------------------------------- */
     const ChatModule = (() => {
       let chats = StorageModule.getChats();
@@ -1644,7 +1660,6 @@
           const currentChat = ChatModule.getActiveChat();
           if (!currentChat) return;
 
-          // Abort previous running request safely
           if (abortController) {
             ChatModule.stopGeneration();
           }
@@ -1712,7 +1727,6 @@
               }
             });
           } catch(err) {
-            // Graceful handling of user abort stop - do not render AbortError text
             if(err.name !== 'AbortError' && !abortController?.signal.aborted) {
               assistantMsg.content += `\n\n**பிழை:** ${err.message}`;
               UIModule.updateStreamingMessage(assistantMsg.content);
@@ -1912,15 +1926,12 @@
           const deltaX = touchEndX - touchStartX;
           const deltaY = touchEndY - touchStartY;
 
-          // Highly responsive touch gesture trigger across any screen position with 15px threshold
           if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) >= 15) {
             const isSidebarOpen = els.sidebar.classList.contains('open');
 
-            // Light horizontal swipe right opens sidebar from anywhere on screen
             if (!isSidebarOpen && deltaX > 0) {
               openSidebar();
             } 
-            // Light horizontal swipe left closes sidebar
             else if (isSidebarOpen && deltaX < 0) {
               closeSidebar();
             }
@@ -1940,10 +1951,8 @@
 
         els.btnSend.addEventListener('click', () => handleSend());
         
-        // Chat textarea Enter key creates a new line exclusively (no auto send)
         els.chatInput.addEventListener('keydown', (e) => {
           if (e.key === 'Enter') {
-            // Native default multiline insertion for Enter and Shift+Enter
             setTimeout(() => {
               els.chatInput.style.height = 'auto';
               els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
@@ -2031,32 +2040,28 @@
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
         });
 
-        // API Key Preset Handlers (Fills unmasked raw key directly into API Key input box & updates active profile)
+        // API Key Preset Handler - நிரப்பப்படும் போது overflow ஆகாமல் இருக்க சரி செய்யப்பட்டது
         els.presetKeySelect.addEventListener('change', async (e) => {
           const selectedId = e.target.value;
           if (!selectedId) return;
+          
           const presets = StorageModule.getKeyPresets();
           const target = presets.find(p => p.id === selectedId);
-          if (target) {
-            if (target.providerId) {
-              StorageModule.setActiveProfileId(target.providerId);
-              UIModule.renderProvidersSelect();
-            }
+          
+          if (target && target.key) {
+            els.settingApiKey.value = target.key;
+            StorageModule.setApiKey(target.key);
+
             if (target.url) {
               StorageModule.setBaseUrl(target.url);
               els.settingBaseUrl.value = target.url;
             }
-            if (target.key) {
-              StorageModule.setApiKey(target.key);
-              els.settingApiKey.value = target.key;
-              UtilityModule.copyToClipboard(target.key).then(() => {
-                UtilityModule.showToast(`Key Loaded & Copied: ${target.name}`);
-              }).catch(() => {
-                UtilityModule.showToast(`Key Loaded: ${target.name}`);
-              });
-            } else {
-              UtilityModule.showToast(`Key Loaded: ${target.name}`);
+            if (target.providerId) {
+              StorageModule.setActiveProfileId(target.providerId);
+              UIModule.renderProvidersSelect();
             }
+
+            UtilityModule.showToast(`API Key நிரப்பப்பட்டது: ${target.name}`);
             UIModule.renderUrlPresets();
             await initModels();
           }
@@ -2501,7 +2506,9 @@
           presets.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.innerText = `${p.name} (${p.key})`;
+            // Dropdown பட்டியலிலும் Key வெளிப்படையாகத் தெரியாமல் மறைக்கப்பட்டுள்ளது
+            const maskedKey = p.key ? `${p.key.slice(0, 4)}...${p.key.slice(-3)}` : '';
+            opt.innerText = `${p.name} (${maskedKey})`;
             if (p.key === currentApiKey) opt.selected = true;
             els.presetKeySelect.appendChild(opt);
           });
