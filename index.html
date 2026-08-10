@@ -1,9 +1,38 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+body {
+    background-color: #f3f4f6;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 2rem;
+}
+
+.buy-btn {
+    background: green;
+    color: white;
+    border-radius: .5rem;
+}
+
+.buy-btn:hover {
+    transform: translateY(-1px);
+}
+    </style>
+</head>
+<body>
+<!DOCTYPE html>
 <html lang="ta" data-theme="dark" data-accent="default">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Universal AI Chat Studio</title>
+  
+  <!-- Puter.js SDK Integration -->
+  <script src="https://js.puter.com/v2/"></script>
+
   <style>
     /* ==========================================================================
        1. CSS VARIABLES & THEME DEFINITIONS
@@ -790,8 +819,8 @@
   <div id="toast-container"></div>
 
   <!-- ==========================================================================
-     SIDEBAR
-     ========================================================================== -->
+      SIDEBAR
+      ========================================================================== -->
   <aside id="sidebar">
     <div class="sidebar-header">
       <button class="btn-new-chat" id="btn-new-chat">
@@ -816,8 +845,8 @@
   </aside>
 
   <!-- ==========================================================================
-     MAIN CHAT VIEW AREA
-     ========================================================================== -->
+      MAIN CHAT VIEW AREA
+      ========================================================================== -->
   <main id="main-content">
     <header class="top-header">
       <div style="display:flex; align-items:center; gap:8px;">
@@ -876,8 +905,8 @@
   </main>
 
   <!-- ==========================================================================
-     MODALS & DIALOGS
-     ========================================================================== -->
+      MODALS & DIALOGS
+      ========================================================================== -->
   <!-- Settings Modal -->
   <div class="modal-overlay" id="modal-settings">
     <div class="modal">
@@ -886,6 +915,10 @@
         <button class="btn-icon" onclick="UIModule.closeModals()">✕</button>
       </div>
       <div class="modal-body">
+        <div class="form-group">
+          <label>API Provider</label>
+          <select id="setting-provider-select" class="form-control"></select>
+        </div>
         <div class="form-group">
           <label>Base URL Preset Dropdown</label>
           <div style="display:flex; gap:6px; width:100%;">
@@ -1057,8 +1090,8 @@
   </div>
 
   <!-- ==========================================================================
-     JAVASCRIPT LOGIC
-     ========================================================================== -->
+      JAVASCRIPT LOGIC
+      ========================================================================== -->
   <script>
     /* --------------------------------------------------------------------------
        1. STORAGE MODULE
@@ -1081,6 +1114,8 @@
       };
 
       const DEFAULT_PROFILES = [
+        { id: 'duckai', name: 'Duck.ai (Free No Key)', url: 'duckai', key: 'duckai' },
+        { id: 'puter', name: 'Puter AI (Free No Key)', url: 'puter', key: 'puter' },
         { id: 'groq', name: 'Groq Cloud', url: 'https://api.groq.com/openai/v1', key: '' },
         { id: 'openrouter', name: 'OpenRouter', url: 'https://openrouter.ai/api/v1', key: '' },
         { id: 'openai', name: 'OpenAI (ChatGPT)', url: 'https://api.openai.com/v1', key: '' },
@@ -1101,7 +1136,9 @@
         }
       };
 
-      const DEFAULT_URL_PRESETS = DEFAULT_PROFILES.map(p => ({ name: p.name, url: p.url }));
+      const DEFAULT_URL_PRESETS = DEFAULT_PROFILES
+        .filter(p => p.url !== 'puter' && p.url !== 'duckai')
+        .map(p => ({ name: p.name, url: p.url }));
 
       return {
         getProfiles: () => {
@@ -1118,7 +1155,7 @@
         },
         saveProfiles: (profiles) => localStorage.setItem(KEYS.API_PROFILES, JSON.stringify(profiles)),
 
-        getActiveProfileId: () => localStorage.getItem(KEYS.ACTIVE_PROFILE_ID) || 'groq',
+        getActiveProfileId: () => localStorage.getItem(KEYS.ACTIVE_PROFILE_ID) || 'duckai',
         setActiveProfileId: (id) => localStorage.setItem(KEYS.ACTIVE_PROFILE_ID, id),
 
         getActiveProfile: () => {
@@ -1136,7 +1173,6 @@
             if (url !== undefined) profile.url = url;
             StorageModule.saveProfiles(profiles);
           }
-          // Backwards compatibility sync
           if (key !== undefined) localStorage.setItem(KEYS.API_KEY, key);
           if (url !== undefined) localStorage.setItem(KEYS.BASE_URL, url);
         },
@@ -1150,7 +1186,7 @@
 
         getBaseUrl: () => {
           const profile = StorageModule.getActiveProfile();
-          return profile ? profile.url : (localStorage.getItem(KEYS.BASE_URL) || 'https://api.groq.com/openai/v1');
+          return profile ? profile.url : (localStorage.getItem(KEYS.BASE_URL) || 'duckai');
         },
         setBaseUrl: (url) => StorageModule.updateActiveProfile(undefined, url),
 
@@ -1351,9 +1387,24 @@
     })();
 
     /* --------------------------------------------------------------------------
-       4. API MODULE
+       4. API MODULE (AUTO-FETCH FUTURE MODELS ADDED)
        -------------------------------------------------------------------------- */
     const APIModule = (() => {
+      // Fallback Static List for Offline/Error
+      const DUCK_AI_MODELS = [
+        { id: 'gpt-4o-mini', owned_by: 'Duck.ai / OpenAI' },
+        { id: 'claude-3-5-sonnet', owned_by: 'Duck.ai / Anthropic' },
+        { id: 'meta-llama/llama-3.3-70b-instruct', owned_by: 'Duck.ai / Meta' },
+        { id: 'mistralai/mixtral-8x7b-instruct', owned_by: 'Duck.ai / Mistral' }
+      ];
+
+      const PUTER_MODELS = [
+        { id: 'gpt-4o-mini', owned_by: 'Puter AI' },
+        { id: 'gpt-4o', owned_by: 'Puter AI' },
+        { id: 'claude-3-5-sonnet', owned_by: 'Puter AI' },
+        { id: 'deepseek-chat', owned_by: 'Puter AI' }
+      ];
+
       const fetchWithTimeoutAndRetry = async (url, options, retries = 2, timeoutMs = 15000) => {
         for (let i = 0; i <= retries; i++) {
           const controller = new AbortController();
@@ -1398,14 +1449,8 @@
           } else if (lower.includes('claude-3-5') || lower.includes('sonnet')) {
             contextWindow = 200000;
             maxOutput = 8192;
-          } else if (lower.includes('gemini-1.5') || lower.includes('gemini-2.0')) {
-            contextWindow = 1000000;
-            maxOutput = 8192;
-          } else if (lower.includes('llama-3.3') || lower.includes('llama-3.1')) {
+          } else if (lower.includes('llama')) {
             contextWindow = 128000;
-            maxOutput = 8192;
-          } else if (lower.includes('deepseek')) {
-            contextWindow = 64000;
             maxOutput = 8192;
           }
         }
@@ -1416,6 +1461,29 @@
       return {
         getModelTokenLimit,
         async fetchModels() {
+          const activeProfile = StorageModule.getActiveProfile();
+
+          // DUCK.AI / PUTER AI DYNAMIC AUTO-FETCH
+          if (activeProfile.id === 'duckai' || activeProfile.id === 'puter' || activeProfile.url === 'puter' || activeProfile.url === 'duckai') {
+            if (typeof puter !== 'undefined' && puter.ai && typeof puter.ai.listModels === 'function') {
+              try {
+                // Fetch latest models live from Puter SDK Endpoint
+                const livePuterModels = await puter.ai.listModels();
+                if (Array.isArray(livePuterModels) && livePuterModels.length > 0) {
+                  return livePuterModels.map(m => ({
+                    id: m.id || m.name,
+                    owned_by: m.provider ? (m.provider.charAt(0).toUpperCase() + m.provider.slice(1)) : activeProfile.name,
+                    context_window: m.context || 32768
+                  }));
+                }
+              } catch (e) {
+                console.warn("Live Puter model list load failed, fallback to static:", e);
+              }
+            }
+            return activeProfile.id === 'duckai' ? DUCK_AI_MODELS : PUTER_MODELS;
+          }
+
+          // STANDARD OPENAI COMPATIBLE APIS (Groq, OpenRouter, OpenAI, Gemini, etc.)
           const key = StorageModule.getApiKey();
           let baseUrl = StorageModule.getBaseUrl().trim();
           if (!baseUrl) baseUrl = 'https://api.groq.com/openai/v1';
@@ -1437,13 +1505,39 @@
         },
 
         async streamChatCompletion({ messages, model, signal, onChunk, requestId }) {
+          const activeProfile = StorageModule.getActiveProfile();
+
+          // DUCK.AI & PUTER AI EXECUTION
+          if (activeProfile.id === 'duckai' || activeProfile.id === 'puter' || activeProfile.url === 'puter' || activeProfile.url === 'duckai') {
+            try {
+              if (typeof puter === 'undefined') {
+                throw new Error("Puter SDK சரியாக लोड ஆகவில்லை. Local Server பயன்படுத்தி இயக்கவும்.");
+              }
+
+              let targetModel = model;
+              if (model.includes('llama')) targetModel = 'meta-llama/llama-3.3-70b-instruct';
+              if (model.includes('mixtral')) targetModel = 'mistralai/mixtral-8x7b-instruct';
+
+              const response = await puter.ai.chat(messages, { model: targetModel, stream: true });
+              for await (const part of response) {
+                if (signal && signal.aborted) break;
+                if (part?.text) {
+                  onChunk(part.text, requestId);
+                }
+              }
+            } catch(e) {
+              throw new Error("AI Execution Error: " + e.message);
+            }
+            return;
+          }
+
+          // STANDARD OPENAI COMPATIBLE API (Groq, Gemini, OpenRouter, etc.)
           const key = StorageModule.getApiKey();
           let baseUrl = StorageModule.getBaseUrl().trim();
           if (!baseUrl) baseUrl = 'https://api.groq.com/openai/v1';
           baseUrl = baseUrl.replace(/\/+$/, '');
 
           const params = StorageModule.getParams();
-          const activeProfile = StorageModule.getActiveProfile();
           const { contextWindow, maxOutput } = getModelTokenLimit(model, ChatModule.getModels());
 
           let totalInputTokens = 0;
@@ -1467,14 +1561,9 @@
             model: model,
             messages: messages,
             stream: true,
-            temperature: parseFloat(params.temperature) || 0.7
+            temperature: parseFloat(params.temperature) || 0.7,
+            max_tokens: calculatedMaxTokens
           };
-
-          if (activeProfile.id === 'openai' && (model.includes('o1') || model.includes('o3'))) {
-            payload.max_completion_tokens = calculatedMaxTokens;
-          } else {
-            payload.max_tokens = calculatedMaxTokens;
-          }
 
           const headers = { 'Content-Type': 'application/json' };
           if (key) headers['Authorization'] = `Bearer ${key}`;
@@ -1714,7 +1803,7 @@
 
           const startTime = Date.now();
           try {
-            const selectedModel = currentChat.model || StorageModule.getLastModel() || (models[0]?.id || 'llama-3.3-70b-versatile');
+            const selectedModel = currentChat.model || StorageModule.getLastModel() || (models[0]?.id || 'gpt-4o-mini');
             await APIModule.streamChatCompletion({
               messages: apiMessages,
               model: selectedModel,
@@ -1952,11 +2041,9 @@
         els.btnSend.addEventListener('click', () => handleSend());
         
         els.chatInput.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter') {
-            setTimeout(() => {
-              els.chatInput.style.height = 'auto';
-              els.chatInput.style.height = Math.min(els.chatInput.scrollHeight, 150) + 'px';
-            }, 0);
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            handleSend();
           }
         });
 
@@ -2040,7 +2127,6 @@
           UtilityModule.showToast('URL பிரீசெட் நீக்கப்பட்டது');
         });
 
-        // API Key Preset Handler - நிரப்பப்படும் போது overflow ஆகாமல் இருக்க சரி செய்யப்பட்டது
         els.presetKeySelect.addEventListener('change', async (e) => {
           const selectedId = e.target.value;
           if (!selectedId) return;
@@ -2506,7 +2592,6 @@
           presets.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            // Dropdown பட்டியலிலும் Key வெளிப்படையாகத் தெரியாமல் மறைக்கப்பட்டுள்ளது
             const maskedKey = p.key ? `${p.key.slice(0, 4)}...${p.key.slice(-3)}` : '';
             opt.innerText = `${p.name} (${maskedKey})`;
             if (p.key === currentApiKey) opt.selected = true;
@@ -2807,14 +2892,19 @@
 
     window.addEventListener('DOMContentLoaded', async () => {
       UIModule.init();
-      const currentKey = StorageModule.getApiKey();
-      const currentBaseUrl = StorageModule.getBaseUrl();
-      if(currentKey || currentBaseUrl.includes('localhost') || currentBaseUrl.includes('127.0.0.1')) {
-        await initModels();
-      } else {
-        document.getElementById('modal-settings').classList.add('active');
-      }
+      await initModels();
     });
   </script>
+</body>
+</html>
+    <script>
+const buyBtn = document.getElementById("buyBtn");
+if (buyBtn) {
+    buyBtn.addEventListener("click", () => {
+        alert("Buying");
+    });
+}
+    </script>
+    
 </body>
 </html>
